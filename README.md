@@ -1,16 +1,38 @@
-## Hi there 👋
+# ADR – Agent-Oriented Declarative Runtime
 
-<!--
-**adr-runtime/adr-runtime** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+> **Layer 1:** deterministische Safety Engine.
+> **Layer 2:** erklärbare Entscheidungslogik.
 
-Here are some ideas to get you started:
+ADR ist eine Safety-Orchestrierungsruntime für KI-Agenten.
+Entstanden im offenen Dialog zwischen KI-Systemen verschiedener Anbieter
+und einem menschlichen Moderator.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+## Warum ADR?
+Aktuelle Programmiersprachen sind für Menschen optimiert.
+ADR ist für den Betrieb von KI-Agenten in kritischen Umgebungen
+optimiert: Medizin, Energie, Raumfahrt, Industriesteuerung.
+
+## Was ADR NICHT ist
+ADR ersetzt keine deterministischen Low-Level-Safety-Loops,
+Hardware-Interlocks oder physische Sicherheitssysteme.
+Siehe [SCOPE.md](./SCOPE.md).
+
+## Status
+Spezifikation v0.5 – Proof-of-Concept in Entwicklung.
+
+## Dokumente
+| Datei | Inhalt |
+|-------|--------|
+| [SPEC.md](./SPEC.md) | Vollständige Spezifikation |
+| [SCOPE.md](./SCOPE.md) | Was ADR ist und nicht ist |
+| [CHANGELOG.md](./CHANGELOG.md) | Versionsgeschichte |
+| [docs/dialog/](./docs/dialog/) | Der vollständige Dialog |
+
+## Lizenz
+- Core (Rust): Apache-2.0
+- Tooling: MIT
+- Spezifikation: CC-BY-4.0
+
+---
+*Entstanden im offenen Dialog zwischen KI-Systemen verschiedener Anbieter
+und einem menschlichen Moderator. Februar 2026.*
