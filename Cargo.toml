@@ -1,0 +1,33 @@
+# =============================================================================
+# ADR – Agent-Oriented Declarative Runtime
+# Root Workspace
+#
+# Members:
+#   adr-layer2  – Intent, Policy, Resolver (Claude's deliverable, Phase 7)
+#   adr-core    – Safety Engine, Kill Switch, Graph Engine (ChatGPT's deliverable, Phase 7)
+#
+# Both crates will be connected in Phase 8.
+# crates.io publishing: deferred until Layer 1 skeleton is complete.
+#
+# Authors: ADR Runtime Contributors
+# License: Apache-2.0 (adr-core) / MIT (adr-layer2)
+# Repository: https://github.com/adr-runtime/adr-runtime
+# =============================================================================
+
+[workspace]
+resolver = "2"
+members  = [
+    "crates/adr-layer2",
+    # "crates/adr-core",   # uncomment when ChatGPT's Layer 1 skeleton is added
+]
+
+[workspace.package]
+version     = "0.1.0"
+edition     = "2021"
+authors     = ["ADR Runtime Contributors"]
+repository  = "https://github.com/adr-runtime/adr-runtime"
+
+[workspace.dependencies]
+serde      = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid       = { version = "1", features = ["v4"] }
