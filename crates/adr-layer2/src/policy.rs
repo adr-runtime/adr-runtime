@@ -37,6 +37,9 @@ pub struct MatchRule {
     pub effect_prefix: Option<String>,   // e.g. "fs_write" matches "fs_write:/data"
     pub node_type:     Option<NodeType>,
     pub exec_class:    Option<ExecClass>,
+    // TODO Phase 8: capability matching requires Node data from adr-core (Layer 1).
+    // Field is kept in schema for forward-compatibility but not yet evaluated
+    // in rule_matches(). Will be wired up once NodeStore is accessible.
     pub capability:    Option<Capability>,
 }
 
@@ -202,6 +205,9 @@ impl CompiledPolicy {
                 return false;
             }
         }
+        // TODO Phase 8: add capability matching here once Node data
+        // from adr-core (Layer 1) is accessible via NodeStore.
+        // rule.capability is intentionally not evaluated yet.
         true
     }
 }
