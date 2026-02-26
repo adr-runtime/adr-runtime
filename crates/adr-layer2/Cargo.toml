@@ -10,7 +10,7 @@ authors     = ["ADR Runtime Contributors"]
 # serde for JSON serialisation of Graph-IR and policy.yaml
 serde       = { version = "1", features = ["derive"] }
 serde_json  = "1"
-uuid        = { version = "1", features = ["v4"] }
+uuid        = { version = "1", features = ["serde", "v4"] }
 
 # adr-core will be a sibling crate once Layer 1 skeleton is ready
 # adr-core = { path = "../adr-core" }
