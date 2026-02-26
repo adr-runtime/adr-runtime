@@ -1,1 +1,0 @@
-C:\Users\PAP\Documents\adr-runtime\target\debug\libadr_layer2.rlib: C:\Users\PAP\Documents\adr-runtime\crates\adr-layer2\src\lib.rs C:\Users\PAP\Documents\adr-runtime\crates\adr-layer2\src\policy.rs C:\Users\PAP\Documents\adr-runtime\crates\adr-layer2\src\resolver.rs C:\Users\PAP\Documents\adr-runtime\crates\adr-layer2\src\types.rs
