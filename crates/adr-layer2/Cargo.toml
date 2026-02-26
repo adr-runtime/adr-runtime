@@ -4,7 +4,7 @@ version     = "0.1.0"
 edition     = "2021"
 description = "ADR Layer 2 – Intent, Policy, Resolver (declarative logic)"
 license     = "MIT"
-authors     = ["ADR Project – Claude (Anthropic) & ChatGPT (OpenAI)"]
+authors     = ["ADR Runtime Contributors"]
 
 [dependencies]
 # serde for JSON serialisation of Graph-IR and policy.yaml
