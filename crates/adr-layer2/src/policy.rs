@@ -13,7 +13,7 @@
 // =============================================================================
 
 use serde::{Deserialize, Serialize};
-use crate::types::{Capability, ExecClass, NodeType, RiskLevel, TrustTier};
+use crate::types::{Capability, ExecClass, NodeType, TrustTier};
 
 // -----------------------------------------------------------------------------
 // Trust Override
