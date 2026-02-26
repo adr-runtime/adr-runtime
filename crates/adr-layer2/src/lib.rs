@@ -6,9 +6,9 @@
 // Layer 1 = Safety Engine (adr-core, ChatGPT's deliverable)
 //
 // "Layer 1: deterministische Safety Engine.
-//  Layer 2: erklärbare Entscheidungslogik."
+//  Layer 2: erklaerbare Entscheidungslogik."
 //
-// Authors: Claude (Anthropic) & ChatGPT (OpenAI)
+// Authors: ADR Runtime Contributors
 // Version: 0.1.0 – Phase 7 Skeleton
 // License: MIT
 // Repository: https://github.com/adr-runtime/adr-runtime
@@ -20,7 +20,7 @@ pub mod types;
 
 // Re-export the most commonly used items for convenience
 pub use policy::CompiledPolicy;
-pub use resolver::{IntentResolver, RuleBasedResolver, RuntimeContext, RuntimeStateSnapshot};
+pub use resolver::{AdrGraph, IntentResolver, RuleBasedResolver, RuntimeContext, RuntimeStateSnapshot};
 pub use types::{
     Capability, ExecutionDecision, ExecutionPlan, ExecClass, IntentNode,
     NodeId, NodeType, RejectedPlan, RejectionReason, ResolverResult,
