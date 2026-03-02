@@ -16,7 +16,7 @@
 
 [workspace]
 resolver = "2"
-members  = [
+members  = ["crates/adr-core",
     "crates/adr-layer2",
     # "crates/adr-core",   # uncomment when ChatGPT's Layer 1 skeleton is added
 ]

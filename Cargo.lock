@@ -3,9 +3,17 @@
 version = 4
 
 [[package]]
+name = "adr-core"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "adr-layer2"
 version = "0.1.0"
 dependencies = [
+ "adr-core",
  "serde",
  "serde_json",
  "uuid",
