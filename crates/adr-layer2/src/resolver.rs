@@ -16,6 +16,7 @@
 // License: MIT
 // =============================================================================
 
+use adr_core::RuntimeState;
 use crate::policy::CompiledPolicy;
 use crate::types::{
     ExecClass, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation, Severity,
@@ -45,6 +46,17 @@ pub enum RuntimeStateSnapshot {
     Stopping,
     Halted,
     Frozen,
+}
+
+impl From<RuntimeState> for RuntimeStateSnapshot {
+    fn from(s: RuntimeState) -> Self {
+        match s {
+            RuntimeState::Running => RuntimeStateSnapshot::Running,
+            RuntimeState::Stopping => RuntimeStateSnapshot::Stopping,
+            RuntimeState::Halted => RuntimeStateSnapshot::Halted,
+            RuntimeState::Frozen => RuntimeStateSnapshot::Frozen,
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
