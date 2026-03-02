@@ -19,7 +19,8 @@
 use adr_core::RuntimeState;
 use crate::policy::CompiledPolicy;
 use crate::types::{
-    ExecClass, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation, Severity,
+    ExecClass, ExecutionPlan, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation,
+    Severity,
 };
 
 // -----------------------------------------------------------------------------
@@ -105,47 +106,62 @@ pub trait IntentResolver {
 pub struct RuleBasedResolver;
 
 impl IntentResolver for RuleBasedResolver {
-    fn resolve(
-        &self,
-        intent: &IntentNode,
-        _graph: &AdrGraph,
-        _policy: &CompiledPolicy,
-        context: &RuntimeContext,
-    ) -> ResolverResult {
-        // Safety check: resolver must not operate if runtime is not Running
-        if context.runtime_state != RuntimeStateSnapshot::Running {
-            return ResolverResult {
-                plan: None,
-                confidence_semantic: 0.0,
-                confidence_safety: 0.0,
-                open_human_gates: vec![],
-                rejected_plans: vec![],
-                safety_violations: vec![SafetyViolation {
-                    node_id: intent.id,
-                    rule: SafetyRule::PolicyConstraintViolated(
-                        "Runtime is not in Running state".to_string(),
-                    ),
-                    severity: Severity::Critical,
-                }],
-            };
-        }
+		fn resolve(
+		&self,
+		intent: &IntentNode,
+		graph: &AdrGraph,
+		policy: &CompiledPolicy,
+		context: &RuntimeContext,
+	) -> ResolverResult {
+		// Phase 9A: minimal deterministic resolver for end-to-end wiring.
+		// Safety is absolute: only Running may produce a plan.
+		let _ = policy;
 
-        // Phase 7 stub: returns empty plan with placeholder confidence.
-        // TODO Phase 8: implement 5-step rule-based selection algorithm:
-        //   Step 1 – Filter nodes with undeclared effects or capabilities
-        //   Step 2 – Filter nodes with insufficient trust tier
-        //   Step 3 – Filter nodes with exec_class conflict
-        //   Step 4 – Sort remaining paths by: min human gates, min caps, shortest path
-        //   Step 5 – Select best path, compute confidence from fulfilled contracts
-        ResolverResult {
-            plan: None,
-            confidence_semantic: 0.0,
-            confidence_safety: 1.0, // No violations found (empty plan)
-            open_human_gates: vec![],
-            rejected_plans: vec![],
-            safety_violations: vec![],
-        }
-    }
+		if context.runtime_state != RuntimeStateSnapshot::Running {
+			return ResolverResult {
+				plan: None,
+				confidence_semantic: 0.0,
+				confidence_safety: 0.0,
+				open_human_gates: vec![],
+				rejected_plans: vec![],
+				safety_violations: vec![SafetyViolation {
+					node_id: intent.id,
+					rule: SafetyRule::PolicyConstraintViolated("runtime_not_running".to_string()),
+					severity: Severity::Critical,
+				}],
+			};
+		}
+
+		let Some(first_id) = graph.node_ids.first().cloned() else {
+			return ResolverResult {
+				plan: None,
+				confidence_semantic: 0.0,
+				confidence_safety: 0.0,
+				open_human_gates: vec![],
+				rejected_plans: vec![],
+				safety_violations: vec![SafetyViolation {
+					node_id: intent.id,
+					rule: SafetyRule::PolicyConstraintViolated("empty_graph".to_string()),
+					severity: Severity::Error,
+				}],
+			};
+		};
+
+		let plan = ExecutionPlan {
+			nodes: vec![first_id],
+			parallel: vec![],
+			checkpoints: vec![],
+		};
+
+		ResolverResult {
+			plan: Some(plan),
+			confidence_semantic: 1.0,
+			confidence_safety: 1.0,
+			open_human_gates: vec![],
+			rejected_plans: vec![],
+			safety_violations: vec![],
+		}
+	}
 }
 
 // -----------------------------------------------------------------------------
@@ -155,8 +171,8 @@ impl IntentResolver for RuleBasedResolver {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::TrustTier;
     use uuid::Uuid;
+	use crate::types::TrustTier;
 
     fn make_context(state: RuntimeStateSnapshot) -> RuntimeContext {
         RuntimeContext {
@@ -167,46 +183,22 @@ mod tests {
     }
 
     fn make_intent() -> IntentNode {
-        use crate::types::IntentNode;
         IntentNode {
             id: Uuid::new_v4(),
-            goal: "Test intent".to_string(),
+            goal: "test".to_string(),
             constraints: vec![],
             trust_tier: TrustTier::AiAutonomous,
             capabilities: vec![],
         }
     }
 
-    #[test]
-    fn resolver_blocks_when_runtime_not_running() {
-        let resolver = RuleBasedResolver;
-        let intent = make_intent();
-        let graph = AdrGraph { node_ids: vec![] };
-        let context = make_context(RuntimeStateSnapshot::Frozen);
-
-        let result = resolver.resolve(&intent, &graph, &stub_policy(), &context);
-        assert_eq!(result.confidence_safety, 0.0);
-        assert!(!result.safety_violations.is_empty());
-    }
-
-    #[test]
-    fn resolver_returns_safe_when_running() {
-        let resolver = RuleBasedResolver;
-        let intent = make_intent();
-        let graph = AdrGraph { node_ids: vec![] };
-        let context = make_context(RuntimeStateSnapshot::Running);
-
-        let result = resolver.resolve(&intent, &graph, &stub_policy(), &context);
-        assert_eq!(result.confidence_safety, 1.0);
-        assert!(result.safety_violations.is_empty());
-    }
-
     /// Minimal compiled policy for tests – does not represent a real domain.
-    fn stub_policy() -> crate::policy::CompiledPolicy {
+    fn stub_policy() -> CompiledPolicy {
         use crate::policy::{
             AuditConfig, KillSwitchConfig, LogLevel, MerkleRootHolder, TimeSource,
         };
-        crate::policy::CompiledPolicy {
+
+        CompiledPolicy {
             domain: "test".to_string(),
             version: "0.0.1".to_string(),
             policy_hash: "stub".to_string(),
@@ -227,4 +219,49 @@ mod tests {
             },
         }
     }
+
+    #[test]
+    fn resolver_blocks_when_runtime_not_running() {
+        let resolver = RuleBasedResolver;
+        let intent = make_intent();
+        let graph = AdrGraph { node_ids: vec![] };
+        let policy = stub_policy();
+        let context = make_context(RuntimeStateSnapshot::Frozen);
+
+        let result = resolver.resolve(&intent, &graph, &policy, &context);
+        assert_eq!(result.confidence_safety, 0.0);
+        assert!(!result.safety_violations.is_empty());
+    }
+
+    #[test]
+    fn resolver_returns_no_plan_when_graph_empty() {
+        let resolver = RuleBasedResolver;
+        let intent = make_intent();
+        let graph = AdrGraph { node_ids: vec![] };
+        let policy = stub_policy();
+        let context = make_context(RuntimeStateSnapshot::Running);
+
+        let result = resolver.resolve(&intent, &graph, &policy, &context);
+        assert_eq!(result.confidence_safety, 0.0);
+        assert!(result.plan.is_none());
+        assert!(!result.safety_violations.is_empty());
+    }
+
+    #[test]
+    fn resolver_picks_first_node_when_running() {
+        let resolver = RuleBasedResolver;
+        let intent = make_intent();
+        let id1 = Uuid::new_v4();
+        let id2 = Uuid::new_v4();
+        let graph = AdrGraph { node_ids: vec![id1, id2] };
+        let policy = stub_policy();
+        let context = make_context(RuntimeStateSnapshot::Running);
+
+        let result = resolver.resolve(&intent, &graph, &policy, &context);
+        assert_eq!(result.confidence_safety, 1.0);
+        assert!(result.safety_violations.is_empty());
+        assert!(result.plan.is_some());
+        assert_eq!(result.plan.unwrap().nodes, vec![id1]);
+    }
 }
+
