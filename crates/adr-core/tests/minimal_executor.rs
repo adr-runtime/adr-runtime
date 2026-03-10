@@ -1,0 +1,74 @@
+use adr_core::{
+    AdrRuntime, AdrRuntimeError, Effect, ExecClass, Node, RuntimeState,
+};
+use adr_core::killswitch::{KillSwitchChannel, StopSignal};
+use uuid::Uuid;
+
+struct NoSignal;
+impl KillSwitchChannel for NoSignal {
+    fn poll(&self) -> Option<StopSignal> {
+        None
+    }
+}
+
+struct FreezeOnce(std::sync::Mutex<bool>);
+impl KillSwitchChannel for FreezeOnce {
+    fn poll(&self) -> Option<StopSignal> {
+        let mut seen = self.0.lock().unwrap();
+        if *seen {
+            None
+        } else {
+            *seen = true;
+            Some(StopSignal::Freeze)
+        }
+    }
+}
+
+#[test]
+fn orchestrated_node_executes() {
+    let node = Node {
+        id: Uuid::new_v4(),
+        label: "fetch_users".to_string(),
+        exec_class: ExecClass::Orchestrated,
+        effect: Effect::NetExternal,
+    };
+
+    let mut rt = AdrRuntime::new(NoSignal);
+    rt.execute_node(&node).expect("orchestrated node should execute");
+}
+
+#[test]
+fn realtime_safe_node_with_effect_is_rejected() {
+    let node = Node {
+        id: Uuid::new_v4(),
+        label: "unsafe_rt".to_string(),
+        exec_class: ExecClass::RealtimeSafe,
+        effect: Effect::NetExternal,
+    };
+
+    let mut rt = AdrRuntime::new(NoSignal);
+    let err = rt.execute_node(&node).unwrap_err();
+
+    match err {
+        AdrRuntimeError::RealtimeViolation => {}
+        _ => panic!("expected RealtimeViolation"),
+    }
+}
+
+#[test]
+fn freeze_blocks_execution() {
+    let node = Node {
+        id: Uuid::new_v4(),
+        label: "noop".to_string(),
+        exec_class: ExecClass::Orchestrated,
+        effect: Effect::None,
+    };
+
+    let mut rt = AdrRuntime::new(FreezeOnce(std::sync::Mutex::new(false)));
+
+    let err = rt.execute_node(&node).unwrap_err();
+    match err {
+        AdrRuntimeError::StateBlocked(RuntimeState::Frozen) => {}
+        _ => panic!("expected StateBlocked(Frozen)"),
+    }
+}
