@@ -36,17 +36,19 @@ fn action_pipeline_resolve_execute_log() {
     runtime.execute_noop().expect("runtime execute ok");
 
     // 3) Create audit log entry for the executed node
-    let log = ActionLogEntry {
-        node_id: node.id,
-        kind: ActionKind::Execute,
-        timestamp_utc: "2026-03-02T23:00:00Z".to_string(),
-        success: true,
-        evidence: Evidence {
-            graph_version: graph.header.graph_version.clone(),
-            policy_version: "phase12-test-policy".to_string(),
-            contract_hash: "noop-contract".to_string(),
-        },
-    };
+	let log = ActionLogEntry {
+		node_id: node.id,
+		kind: ActionKind::Execute,
+		timestamp_utc: "2026-03-02T23:00:00Z".to_string(),
+		success: true,
+		evidence: Evidence {
+			graph_version: graph.header.graph_version.clone(),
+			policy_version: "phase12-test-policy".to_string(),
+			contract_hash: "noop-contract".to_string(),
+		},
+		prev_hash: None,
+		entry_hash: "dummy_hash".to_string(),
+	};
 
     // 4) Assertions
     assert_eq!(graph.nodes.len(), 1);
