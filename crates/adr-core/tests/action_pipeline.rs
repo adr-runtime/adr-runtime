@@ -15,12 +15,13 @@ impl KillSwitchChannel for NoSignal {
 #[test]
 fn action_pipeline_resolve_execute_log() {
     // 1) Minimal graph with one node
-    let node = Node {
-        id: Uuid::new_v4(),
-        label: "fetch_users".to_string(),
-        exec_class: ExecClass::Orchestrated,
-        effect: Effect::NetExternal,
-    };
+	let node = Node {
+		id: Uuid::new_v4(),
+		label: "fetch_users".to_string(),
+		exec_class: ExecClass::Orchestrated,
+		effect: Effect::NetExternal,
+		capabilities: vec![],
+	};
 
     let graph = Graph {
         header: GraphHeader {

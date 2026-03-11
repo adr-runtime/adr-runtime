@@ -26,12 +26,13 @@ impl KillSwitchChannel for FreezeOnce {
 
 #[test]
 fn orchestrated_node_executes() {
-    let node = Node {
-        id: Uuid::new_v4(),
-        label: "fetch_users".to_string(),
-        exec_class: ExecClass::Orchestrated,
-        effect: Effect::NetExternal,
-    };
+	let node = Node {
+		id: Uuid::new_v4(),
+		label: "fetch_users".to_string(),
+		exec_class: ExecClass::Orchestrated,
+		effect: Effect::NetExternal,
+		capabilities: vec![],
+	};
 
     let mut rt = AdrRuntime::new(NoSignal);
     rt.execute_node(&node).expect("orchestrated node should execute");
@@ -44,6 +45,7 @@ fn realtime_safe_node_with_effect_is_rejected() {
         label: "unsafe_rt".to_string(),
         exec_class: ExecClass::RealtimeSafe,
         effect: Effect::NetExternal,
+		capabilities: vec![],
     };
 
     let mut rt = AdrRuntime::new(NoSignal);
@@ -62,6 +64,7 @@ fn freeze_blocks_execution() {
         label: "noop".to_string(),
         exec_class: ExecClass::Orchestrated,
         effect: Effect::None,
+		capabilities: vec![],
     };
 
     let mut rt = AdrRuntime::new(FreezeOnce(std::sync::Mutex::new(false)));
@@ -71,4 +74,44 @@ fn freeze_blocks_execution() {
         AdrRuntimeError::StateBlocked(RuntimeState::Frozen) => {}
         _ => panic!("expected StateBlocked(Frozen)"),
     }
+}
+
+// Node verlangt Capability -> Runtime lehnt ab
+#[test]
+fn node_without_granted_capability_is_rejected() {
+    let node = Node {
+        id: Uuid::new_v4(),
+        label: "fs_write".to_string(),
+        exec_class: ExecClass::Orchestrated,
+        effect: Effect::FsWrite,
+        capabilities: vec![1 << 3],
+    };
+
+    let mut rt = AdrRuntime::new(NoSignal);
+    let err = rt.execute_node(&node).unwrap_err();
+
+    match err {
+        AdrRuntimeError::CapabilityNotGranted(mask) => {
+            assert_eq!(mask, 1 << 3);
+        }
+        _ => panic!("expected CapabilityNotGranted"),
+    }
+}
+
+// Node verlangt Capability -> Runtime hat Capability -> Node darf laufen
+#[test]
+fn node_with_granted_capability_executes() {
+    let node = Node {
+        id: Uuid::new_v4(),
+        label: "fs_write".to_string(),
+        exec_class: ExecClass::Orchestrated,
+        effect: Effect::FsWrite,
+        capabilities: vec![1 << 3],
+    };
+
+    let mut rt = AdrRuntime::new(NoSignal);
+    rt.capabilities().allow_mask(1 << 3);
+
+    rt.execute_node(&node)
+        .expect("node with granted capability should execute");
 }

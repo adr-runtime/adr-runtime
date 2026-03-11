@@ -28,6 +28,7 @@ pub struct Node {
     pub label: String,
     pub exec_class: ExecClass,
     pub effect: Effect,
+    pub capabilities: Vec<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

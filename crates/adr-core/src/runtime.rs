@@ -1,3 +1,4 @@
+use crate::capability::CapabilitySet;
 use crate::graph::{Effect, ExecClass, Node};
 use crate::killswitch::{KillSwitchChannel, StopSignal};
 use crate::runtime_state::RuntimeState;
@@ -6,20 +7,23 @@ use crate::runtime_state::RuntimeState;
 pub enum AdrRuntimeError {
     StateBlocked(RuntimeState),
     RealtimeViolation,
+    CapabilityNotGranted(u64),
 }
 
 pub struct AdrRuntime<C: KillSwitchChannel> {
     state: RuntimeState,
     kill: C,
+    caps: CapabilitySet,
 }
 
 impl<C: KillSwitchChannel> AdrRuntime<C> {
-    pub fn new(kill: C) -> Self {
-        Self {
-            state: RuntimeState::Running,
-            kill,
-        }
-    }
+	pub fn new(kill: C) -> Self {
+		Self {
+			state: RuntimeState::Running,
+			kill,
+			caps: CapabilitySet::new(),
+		}
+	}
 
     pub fn state(&self) -> RuntimeState {
         self.state
@@ -28,6 +32,14 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
     pub fn set_state(&mut self, s: RuntimeState) {
         self.state = s;
     }
+	
+	pub fn capabilities(&self) -> &CapabilitySet {
+		&self.caps
+	}
+
+	pub fn capabilities_mut(&self) -> &CapabilitySet {
+		&self.caps
+	}
 
     /// Phase 8/9: noop execution to prove state gating and kill switch priority.
     pub fn execute_noop(&mut self) -> Result<(), AdrRuntimeError> {
@@ -48,6 +60,14 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
         if self.state >= RuntimeState::Halted {
             return Err(AdrRuntimeError::StateBlocked(self.state));
         }
+		
+		
+		// Phase 14: capability enforcement in executor
+		for cap_mask in &node.capabilities {
+			if !self.caps.has_mask(*cap_mask) {
+				return Err(AdrRuntimeError::CapabilityNotGranted(*cap_mask));
+			}
+		}
 
         match node.exec_class {
             ExecClass::RealtimeSafe => match node.effect {
