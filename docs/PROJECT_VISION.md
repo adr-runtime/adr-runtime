@@ -42,16 +42,13 @@ steigt dieses Risiko.
 
 ADR trennt zwei Aufgaben strikt voneinander:
 
-Planung
-und
-Ausführung
-
+> **Planung** und **Ausführung**
 
 Der Agent oder Resolver erstellt nur einen **Vorschlag**.
 
 Die Runtime entscheidet:
 
-Darf diese Aktion ausgeführt werden?
+> Darf diese Aktion ausgeführt werden?
 
 
 Diese Architektur ähnelt bekannten Sicherheitsprinzipien:
@@ -105,11 +102,11 @@ Alle Aktionen werden protokolliert.
 
 Das Audit Log bildet eine Hash-Kette.
 
-
+```
 entry1
 entry2 → hash(entry1)
 entry3 → hash(entry2)
-
+```
 
 Damit wird Manipulation sichtbar.
 
@@ -121,8 +118,9 @@ Agenten erhalten keine unbegrenzten Rechte.
 
 Stattdessen:
 
-node.capabilities ⊆&sube; runtime.capability_set
-
+```
+node.capabilities ⊆ runtime.capability_set
+```
 
 Nur erlaubte Fähigkeiten können genutzt werden.
 
@@ -170,10 +168,9 @@ Das Projekt entsteht durch eine Kombination aus:
 - Architektur-Diskussion
 - Architecture Decision Records (ADR)
 
-Diskussionen werden dokumentiert in: docs/dialog/
+Diskussionen werden dokumentiert in: `docs/dialog/`
 
-
-Architekturentscheidungen werden festgehalten in: docs/adr/
+Architekturentscheidungen werden festgehalten in: `docs/adr/`
 
 
 ---

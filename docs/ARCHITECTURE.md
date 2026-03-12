@@ -10,6 +10,8 @@ unsicheren Operationen ausführen können.
 ---
 
 # High-Level Architecture
+
+```
 Intent / Request
 │
 ▼
@@ -29,6 +31,7 @@ ExecClass + Effect Validation
 │
 ▼
 Audit Log (Hash Chain)
+```
 
 
 Layer 2 erzeugt Vorschläge.  
@@ -73,6 +76,7 @@ Dieser Layer ist der **Safety Kernel**.
 
 Jede Node-Ausführung durchläuft diese Reihenfolge:
 
+```
 poll_kill_switch()
 │
 RuntimeState Check
@@ -86,6 +90,7 @@ Effect Validation
 Execution
 │
 Audit Logging
+```
 
 
 Diese Reihenfolge stellt sicher, dass keine unsichere Operation ausgeführt wird.
@@ -96,7 +101,9 @@ Diese Reihenfolge stellt sicher, dass keine unsichere Operation ausgeführt wird
 
 Die Runtime besitzt eine Sicherheitsordnung:
 
+```
 Running < Stopping < Halted < Frozen
+```
 
 
 Je höher der Zustand, desto stärker die Einschränkung.
@@ -121,11 +128,11 @@ Beispiele:
 
 Der Executor prüft vor jeder Node-Ausführung:
 
-node.capabilities ⊆&sube; runtime.capability_set
+```
+node.capabilities ⊆ runtime.capability_set
+```
 
-Fehlende Capabilities führen zu:
-
-CapabilityNotGranted
+Fehlende Capabilities führen zu `CapabilityNotGranted`.
 
 
 ---
@@ -134,17 +141,19 @@ CapabilityNotGranted
 
 Nodes besitzen eine Execution Class:
 
+```
 RealtimeSafe
 Orchestrated
-
+```
 
 RealtimeSafe Nodes dürfen **keine externen Effekte** haben.
 
 Beispiel:
 
-
-RealtimeSafe + Effect::None → erlaubt
+```
+RealtimeSafe + Effect::None  → erlaubt
 RealtimeSafe + Effect::FsWrite → Fehler
+```
 
 
 ---
@@ -164,9 +173,11 @@ Jeder Eintrag enthält:
 
 Die Einträge bilden eine lineare Hash-Kette.
 
+```
 entry1
 entry2 → hash(entry1)
 entry3 → hash(entry2)
+```
 
 
 Dadurch wird nachträgliche Manipulation erkennbar.
@@ -179,18 +190,13 @@ ADR ist **kein Ersatz für deterministische Low-Level-Systeme**.
 
 ADR entscheidet:
 
-Darf ein Agent diese Operation ausführen?
+> Darf ein Agent diese Operation ausführen?
 
 Nicht:
 
-Wie wird die Operation technisch ausgeführt?
+> Wie wird die Operation technisch ausgeführt?
 
-
-Beispiel:
-
-ADR erlaubt:
-
-actuator_control
+Beispiel: ADR erlaubt `actuator_control`.
 
 
 Die tatsächliche Hardwaresteuerung erfolgt in einem
@@ -200,14 +206,16 @@ separaten deterministischen System.
 
 # Repository Structure
 
+```
 docs/
-├─ adr/ Architecture Decision Records
-├─ dialog/ ChatGPT ↔ Claude Architektur-Dialog
+├─ adr/     Architecture Decision Records
+├─ dialog/  ChatGPT ↔ Claude Architektur-Dialog
 └─ ARCHITECTURE.md
 
 crates/
 ├─ adr-core
 └─ adr-layer2
+```
 
 
 ---
@@ -220,14 +228,9 @@ Die Architektur entsteht durch:
 - Architektur-Dialog
 - Architecture Decision Records (ADR)
 
-Neue Entscheidungen werden dokumentiert in:
+Neue Entscheidungen werden dokumentiert in `docs/adr/`.
 
-docs/adr/
-
-
-Diskussionen und Reviews befinden sich in:
-
-docs/dialog/
+Diskussionen und Reviews befinden sich in `docs/dialog/`.
 
 
 ---

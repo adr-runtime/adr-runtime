@@ -99,14 +99,11 @@ sich mehr Rechte zu verschaffen.
 
 Der Executor erzwingt Capability-Prüfung:
 
+```
+node.capabilities ⊆ runtime.capability_set
+```
 
-node.capabilities ⊆&sube; runtime.capability_set
-
-
-Fehlende Fähigkeiten führen zu: CapabilityNotGranted
-
-
-Die Operation wird nicht ausgeführt.
+Fehlende Fähigkeiten führen zu `CapabilityNotGranted`. Die Operation wird nicht ausgeführt.
 
 ---
 
@@ -117,8 +114,7 @@ Die Operation wird nicht ausgeführt.
 Ein Node versucht einen Effekt auszuführen,
 der in seinem Kontext nicht erlaubt ist.
 
-Beispiel: RealtimeSafe + Effect::FsWrite
-
+Beispiel: `RealtimeSafe + Effect::FsWrite`
 
 ## Risiko
 
@@ -129,10 +125,7 @@ Realtime-Operationen destabilisieren.
 
 ExecClass-Regeln verhindern solche Kombinationen.
 
-RealtimeSafe Nodes dürfen nur: Effect::None
-
-
-verwenden.
+RealtimeSafe Nodes dürfen nur `Effect::None` verwenden.
 
 ---
 
@@ -168,12 +161,13 @@ um Aktionen zu verschleiern.
 
 ## Mitigation
 
-Audit-Einträge sind verkettet: entry_hash = SHA256(entry_fields + prev_hash)
+Audit-Einträge sind verkettet:
 
+```
+entry_hash = SHA256(entry_fields + prev_hash)
+```
 
-
-Jede Änderung eines Eintrags
-bricht die Hash-Kette.
+Jede Änderung eines Eintrags bricht die Hash-Kette.
 
 Manipulation wird sichtbar.
 

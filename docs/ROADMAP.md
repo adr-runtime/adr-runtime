@@ -315,16 +315,13 @@ Das bedeutet:
 
 # Dokumentationsbezug
 
-Diskussionen und Reviews:
+Diskussionen und Reviews: `docs/dialog/`
 
-```text
-docs/dialog/
+Verbindliche Architekturentscheidungen: `docs/adr/`
 
-Verbindliche Architekturentscheidungen:
+Weitere Dokumente:
 
-docs/adr/
-
-docs/PROJECT_VISION.md
-docs/ARCHITECTURE.md
-docs/SAFETY_MODEL.md
-docs/THREAT_MODEL.md
+- `docs/PROJECT_VISION.md`
+- `docs/ARCHITECTURE.md`
+- `docs/SAFETY_MODEL.md`
+- `docs/THREAT_MODEL.md`

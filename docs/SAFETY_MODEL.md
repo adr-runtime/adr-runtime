@@ -32,6 +32,7 @@ das System eingesetzt wird.
 
 Die Sicherheitsmechanismen sind mehrschichtig aufgebaut.
 
+```
 KillSwitch
 ↓
 RuntimeState
@@ -43,6 +44,7 @@ Execution Class Validation
 Effect Validation
 ↓
 Audit Log
+```
 
 
 Jede Ebene kann eine Ausführung stoppen.
@@ -56,12 +58,11 @@ Der Kill Switch ist die höchste Sicherheitsinstanz.
 Er kann jederzeit ausgelöst werden und hat Priorität über
 laufende Operationen.
 
-poll_kill_switch()
+Wenn `poll_kill_switch()` ein Signal erkennt:
 
-
-Wenn ein KillSignal erkannt wird:
-
+```
 RuntimeState → Frozen
+```
 
 
 Danach werden keine Nodes mehr ausgeführt.
@@ -72,22 +73,18 @@ Danach werden keine Nodes mehr ausgeführt.
 
 Die Runtime besitzt eine Sicherheitsordnung.
 
-Running
-Stopping
-Halted
-Frozen
-
-
-Diese Zustände sind geordnet:
-
+```
 Running < Stopping < Halted < Frozen
+```
 
 
 Je höher der Zustand, desto stärker sind die Einschränkungen.
 
 Beispiel:
 
+```
 state >= Halted → Execution blockiert
+```
 
 
 ---
@@ -104,21 +101,11 @@ Beispiele:
 
 Der Executor prüft:
 
-node.capabilities ⊆&sube; runtime.capability_set
+```
+node.capabilities ⊆ runtime.capability_set
+```
 
-Fehlt eine Capability, wird die Ausführung abgebrochen.
-
-CapabilityNotGranted
-
-
-Der Resolver allein kann keine Fähigkeiten erzwingen.
-
----
-
-# Execution Classes
-
-Nodes besitzen eine Execution Class.
-
+Fehlt eine Capability, wird die Ausführung mit `CapabilityNotGranted` abgebrochen.
 
 
 Der Resolver allein kann keine Fähigkeiten erzwingen.
@@ -129,16 +116,20 @@ Der Resolver allein kann keine Fähigkeiten erzwingen.
 
 Nodes besitzen eine Execution Class.
 
+```
 RealtimeSafe
 Orchestrated
+```
 
 
 RealtimeSafe Nodes dürfen keine externen Effekte auslösen.
 
 Beispiel:
 
-RealtimeSafe + Effect::None → erlaubt
+```
+RealtimeSafe + Effect::None  → erlaubt
 RealtimeSafe + Effect::FsWrite → Fehler
+```
 
 
 Diese Einschränkung verhindert nicht-deterministische
@@ -161,9 +152,11 @@ Ein Audit-Eintrag enthält:
 
 Die Einträge bilden eine Hash-Kette.
 
+```
 entry1
 entry2 → hash(entry1)
 entry3 → hash(entry2)
+```
 
 
 Wenn ein Eintrag verändert wird,
@@ -177,15 +170,7 @@ ADR kontrolliert **ob** ein Agent handeln darf.
 
 ADR kontrolliert nicht **wie** eine Operation technisch ausgeführt wird.
 
-Beispiel:
-
-ADR erlaubt:
-
-actuator_control
-
-
-Die eigentliche Hardwaresteuerung erfolgt außerhalb von ADR
-in deterministischen Systemen.
+Beispiel: ADR erlaubt `actuator_control`. Die eigentliche Hardwaresteuerung erfolgt außerhalb von ADR in deterministischen Systemen.
 
 ---
 
