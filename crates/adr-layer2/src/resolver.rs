@@ -22,6 +22,7 @@ use crate::types::{
     ExecClass, ExecutionPlan, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation,
     Severity,
 };
+use crate::policy_engine::PolicyEngine;
 
 // -----------------------------------------------------------------------------
 // Runtime Context
@@ -106,62 +107,75 @@ pub trait IntentResolver {
 pub struct RuleBasedResolver;
 
 impl IntentResolver for RuleBasedResolver {
-		fn resolve(
-		&self,
-		intent: &IntentNode,
-		graph: &AdrGraph,
-		policy: &CompiledPolicy,
-		context: &RuntimeContext,
-	) -> ResolverResult {
-		// Phase 9A: minimal deterministic resolver for end-to-end wiring.
-		// Safety is absolute: only Running may produce a plan.
-		let _ = policy;
+    fn resolve(
+        &self,
+        intent: &IntentNode,
+        graph: &AdrGraph,
+        _policy: &CompiledPolicy,
+        context: &RuntimeContext,
+    ) -> ResolverResult {
+        // Safety must be checked before any policy logic.
+        if context.runtime_state != RuntimeStateSnapshot::Running {
+            return ResolverResult {
+                plan: None,
+                confidence_semantic: 0.0,
+                confidence_safety: 0.0,
+                open_human_gates: vec![],
+                rejected_plans: vec![],
+                safety_violations: vec![SafetyViolation {
+                    node_id: intent.id,
+                    rule: SafetyRule::PolicyConstraintViolated("runtime_not_running".to_string()),
+                    severity: Severity::Critical,
+                }],
+            };
+        }
 
-		if context.runtime_state != RuntimeStateSnapshot::Running {
-			return ResolverResult {
-				plan: None,
-				confidence_semantic: 0.0,
-				confidence_safety: 0.0,
-				open_human_gates: vec![],
-				rejected_plans: vec![],
-				safety_violations: vec![SafetyViolation {
-					node_id: intent.id,
-					rule: SafetyRule::PolicyConstraintViolated("runtime_not_running".to_string()),
-					severity: Severity::Critical,
-				}],
-			};
-		}
+        // Phase 16 skeleton: resolver-side policy filter.
+        // Currently empty policy = allow all.
+        let policy_engine = PolicyEngine::new(vec![]);
 
-		let Some(first_id) = graph.node_ids.first().cloned() else {
-			return ResolverResult {
-				plan: None,
-				confidence_semantic: 0.0,
-				confidence_safety: 0.0,
-				open_human_gates: vec![],
-				rejected_plans: vec![],
-				safety_violations: vec![SafetyViolation {
-					node_id: intent.id,
-					rule: SafetyRule::PolicyConstraintViolated("empty_graph".to_string()),
-					severity: Severity::Error,
-				}],
-			};
-		};
+        if !policy_engine.allows(intent) {
+            return ResolverResult {
+                plan: None,
+                confidence_semantic: 0.0,
+                confidence_safety: 0.0,
+                open_human_gates: vec![],
+                rejected_plans: vec![],
+                safety_violations: vec![],
+            };
+        }
 
-		let plan = ExecutionPlan {
-			nodes: vec![first_id],
-			parallel: vec![],
-			checkpoints: vec![],
-		};
+        // Deterministic minimal selection: first node in graph.
+        let Some(first_id) = graph.node_ids.first().cloned() else {
+            return ResolverResult {
+                plan: None,
+                confidence_semantic: 0.0,
+                confidence_safety: 0.0,
+                open_human_gates: vec![],
+                rejected_plans: vec![],
+                safety_violations: vec![SafetyViolation {
+                    node_id: intent.id,
+                    rule: SafetyRule::PolicyConstraintViolated("empty_graph".to_string()),
+                    severity: Severity::Error,
+                }],
+            };
+        };
 
-		ResolverResult {
-			plan: Some(plan),
-			confidence_semantic: 1.0,
-			confidence_safety: 1.0,
-			open_human_gates: vec![],
-			rejected_plans: vec![],
-			safety_violations: vec![],
-		}
-	}
+        let plan = ExecutionPlan {
+            nodes: vec![first_id],
+            parallel: vec![],
+            checkpoints: vec![],
+        };
+
+        ResolverResult {
+            plan: Some(plan),
+            confidence_semantic: 1.0,
+            confidence_safety: 1.0,
+            open_human_gates: vec![],
+            rejected_plans: vec![],
+            safety_violations: vec![],
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------

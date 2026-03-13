@@ -17,6 +17,7 @@
 pub mod policy;
 pub mod resolver;
 pub mod types;
+pub mod policy_engine;
 
 // Re-export the most commonly used items for convenience
 pub use policy::CompiledPolicy;
