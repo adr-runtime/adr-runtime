@@ -1,6 +1,6 @@
 use adr_core::Effect;
+use crate::policy::CompiledPolicy;
 use crate::types::{Capability, IntentNode, TrustTier};
-
 
 
 #[derive(Debug, Clone)]
@@ -20,6 +20,16 @@ impl PolicyEngine {
     pub fn new(rules: Vec<PolicyRule>) -> Self {
         Self { rules }
     }
+	
+	pub fn from_compiled_policy(policy: &CompiledPolicy) -> Self {
+		let rule = PolicyRule {
+			allowed_capabilities: policy.allowed_capabilities.clone(),
+			minimum_trust_tier: policy.minimum_trust_tier.clone(),
+			allowed_effects: policy.allowed_effects.clone(),
+		};
+
+		Self { rules: vec![rule] }
+	}
 
 	pub fn allows(&self, node: &IntentNode) -> bool {
 		for rule in &self.rules {
@@ -38,5 +48,31 @@ impl PolicyEngine {
 
 		true
 	}
+	
+	pub fn allows_with_effect(&self, node: &IntentNode, effect: &Effect) -> bool {
+		for rule in &self.rules {
+			if let Some(min_tier) = &rule.minimum_trust_tier {
+				if &node.trust_tier < min_tier {
+					return false;
+				}
+			}
+
+			for cap in &node.capabilities {
+				if !rule.allowed_capabilities.contains(cap) {
+					return false;
+				}
+			}
+
+			if let Some(allowed_effects) = &rule.allowed_effects {
+				if !allowed_effects.contains(effect) {
+					return false;
+				}
+			}
+		}
+
+		true
+}
+	
+	
 
 }

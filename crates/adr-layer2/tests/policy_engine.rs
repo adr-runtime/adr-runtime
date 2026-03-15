@@ -1,6 +1,7 @@
 use adr_layer2::policy_engine::{PolicyEngine, PolicyRule};
 use adr_layer2::types::{Capability, IntentNode, TrustTier};
 use uuid::Uuid;
+use adr_core::Effect;
 
 fn make_intent(capabilities: Vec<Capability>) -> IntentNode {
     IntentNode {
@@ -61,3 +62,35 @@ fn policy_blocks_insufficient_trust_tier() {
 
     assert!(!engine.allows(&intent));
 }
+
+#[test]
+fn policy_blocks_disallowed_effect() {
+    let rule = PolicyRule {
+        allowed_capabilities: vec![Capability("fs_write".to_string())],
+        minimum_trust_tier: None,
+        allowed_effects: Some(vec![Effect::None]),
+    };
+
+    let engine = PolicyEngine::new(vec![rule]);
+
+    let intent = make_intent(vec![Capability("fs_write".to_string())]);
+
+    assert!(!engine.allows_with_effect(&intent, &Effect::FsWrite));
+}
+
+#[test]
+fn policy_allows_permitted_effect() {
+    let rule = PolicyRule {
+        allowed_capabilities: vec![Capability("fs_write".to_string())],
+        minimum_trust_tier: None,
+        allowed_effects: Some(vec![Effect::FsWrite]),
+    };
+
+    let engine = PolicyEngine::new(vec![rule]);
+
+    let intent = make_intent(vec![Capability("fs_write".to_string())]);
+
+    assert!(engine.allows_with_effect(&intent, &Effect::FsWrite));
+}
+
+

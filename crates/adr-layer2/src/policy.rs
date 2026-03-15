@@ -146,6 +146,10 @@ pub struct CompiledPolicy {
     pub freeze_triggers: Vec<FreezeTrigger>,
     pub audit:           AuditConfig,
     pub kill_switch:     KillSwitchConfig,
+	
+	pub allowed_capabilities: Vec<crate::types::Capability>,
+	pub minimum_trust_tier: Option<crate::types::TrustTier>,
+	pub allowed_effects: Option<Vec<adr_core::Effect>>,
 }
 
 impl CompiledPolicy {
