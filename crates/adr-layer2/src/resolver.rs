@@ -140,8 +140,7 @@ impl IntentResolver for RuleBasedResolver {
         // Phase 16 skeleton: resolver-side policy filter.
         // Currently empty policy = allow all.
 		let policy_engine = PolicyEngine::from_compiled_policy(_policy);
-
-		let Some(first_id) = graph.node_ids.first().cloned() else {
+		if graph.nodes.is_empty() {
 			return ResolverResult {
 				plan: None,
 				confidence_semantic: 0.0,
@@ -154,53 +153,59 @@ impl IntentResolver for RuleBasedResolver {
 					severity: Severity::Error,
 				}],
 			};
-		};
+		}
+		
 
-		let Some(first_node) = graph.nodes.iter().find(|n| n.id == first_id) else {
+
+
+		let mut allowed_ids = Vec::new();
+		let mut policy_violations = Vec::new();
+
+		for node in &graph.nodes {
+			if !policy_engine.allows_with_effect(intent, &node.effect) {
+				policy_violations.push(SafetyViolation {
+					node_id: node.id,
+					rule: SafetyRule::PolicyConstraintViolated(
+						"effect_not_allowed_by_policy".to_string(),
+					),
+					severity: Severity::Error,
+				});
+				continue;
+			}
+
+			allowed_ids.push(node.id);
+		}
+
+		if allowed_ids.is_empty() {
 			return ResolverResult {
 				plan: None,
 				confidence_semantic: 0.0,
 				confidence_safety: 0.0,
 				open_human_gates: vec![],
 				rejected_plans: vec![],
-				safety_violations: vec![SafetyViolation {
-					node_id: intent.id,
-					rule: SafetyRule::PolicyConstraintViolated("missing_node_metadata".to_string()),
-					severity: Severity::Error,
-				}],
-			};
-		};
-
-		if !policy_engine.allows_with_effect(intent, &first_node.effect) {
-			return ResolverResult {
-				plan: None,
-				confidence_semantic: 0.0,
-				confidence_safety: 0.0,
-				open_human_gates: vec![],
-				rejected_plans: vec![],
-				safety_violations: vec![SafetyViolation {
-					node_id: intent.id,
-					rule: SafetyRule::PolicyConstraintViolated("effect_not_allowed_by_policy".to_string()),
-					severity: Severity::Error,
-				}],
+				safety_violations: policy_violations,
 			};
 		}
 
+		let plan = ExecutionPlan {
+			nodes: allowed_ids,
+			parallel: vec![],
+			checkpoints: vec![],
+		};
 
-        let plan = ExecutionPlan {
-            nodes: vec![first_id],
-            parallel: vec![],
-            checkpoints: vec![],
-        };
 
-        ResolverResult {
-            plan: Some(plan),
-            confidence_semantic: 1.0,
-            confidence_safety: 1.0,
-            open_human_gates: vec![],
-            rejected_plans: vec![],
-            safety_violations: vec![],
-        }
+
+
+
+		ResolverResult {
+			plan: Some(plan),
+			confidence_semantic: 1.0,
+			confidence_safety: 1.0,
+			open_human_gates: vec![],
+			rejected_plans: vec![],
+			safety_violations: policy_violations,
+		}
+
     }
 }
 
@@ -318,7 +323,7 @@ mod tests {
         assert_eq!(result.confidence_safety, 1.0);
         assert!(result.safety_violations.is_empty());
         assert!(result.plan.is_some());
-        assert_eq!(result.plan.unwrap().nodes, vec![id1]);
+        assert_eq!(result.plan.unwrap().nodes, vec![id1, id2]);
     }
 	
 	#[test]
@@ -380,6 +385,69 @@ mod tests {
 		
 						
 	}
+	
+	#[test]
+	fn resolver_collects_policy_violations_for_disallowed_nodes() {
+		let resolver = RuleBasedResolver;
+		let intent = make_intent();
+
+		let id1 = Uuid::new_v4();
+		let id2 = Uuid::new_v4();
+
+		let graph = AdrGraph {
+			node_ids: vec![id1, id2],
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+				},
+				AdrNodeMeta {
+					id: id2,
+					effect: Effect::FsWrite,
+				},
+			],
+		};
+
+		let policy = CompiledPolicy {
+			domain: "test".to_string(),
+			version: "0.0.1".to_string(),
+			policy_hash: "stub".to_string(),
+			allowed_capabilities: vec![],
+			minimum_trust_tier: None,
+			allowed_effects: Some(vec![Effect::None]),
+			trust_overrides: vec![],
+			freeze_triggers: vec![],
+			audit: AuditConfig {
+				log_level: LogLevel::Minimal,
+				merkle_root_holder: MerkleRootHolder::Local,
+				merkle_anchor_interval: std::time::Duration::from_secs(300),
+				tamper_evident: false,
+				time_source: TimeSource::LocalClock,
+			},
+			kill_switch: KillSwitchConfig {
+				require_physical_channel: false,
+				channels: vec![],
+				watchdog_timer: None,
+				offline_capable: false,
+			},
+		};
+
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+
+		assert!(result.plan.is_some());
+		assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1]);
+		assert_eq!(result.safety_violations.len(), 1);
+
+		match &result.safety_violations[0].rule {
+			SafetyRule::PolicyConstraintViolated(msg) => {
+				assert_eq!(msg, "effect_not_allowed_by_policy");
+			}
+			other => panic!("unexpected safety rule: {:?}", other),
+		}
+	}
+	
 	
 }
 

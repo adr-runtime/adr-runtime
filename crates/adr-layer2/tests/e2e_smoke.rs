@@ -88,8 +88,8 @@ fn e2e_resolve_then_execute_noop() {
 
     assert_eq!(result.confidence_safety, 1.0);
     assert!(result.plan.is_some());
-    assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1]);
-
+    assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1, id2]);
+	
     // Execute noop (Layer 1)
     rt.execute_noop().expect("runtime execute ok");
 }
