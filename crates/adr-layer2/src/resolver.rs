@@ -178,7 +178,11 @@ impl IntentResolver for RuleBasedResolver {
 				confidence_safety: 0.0,
 				open_human_gates: vec![],
 				rejected_plans: vec![],
-				safety_violations: vec![],
+				safety_violations: vec![SafetyViolation {
+					node_id: intent.id,
+					rule: SafetyRule::PolicyConstraintViolated("effect_not_allowed_by_policy".to_string()),
+					severity: Severity::Error,
+				}],
 			};
 		}
 
@@ -363,6 +367,18 @@ mod tests {
 
 		assert!(result.plan.is_none());
 		assert_eq!(result.confidence_safety, 0.0);
+		assert!(!result.safety_violations.is_empty());
+		
+		match &result.safety_violations[0].rule {
+			SafetyRule::PolicyConstraintViolated(msg) => {
+				assert_eq!(msg, "effect_not_allowed_by_policy");
+			}
+			other => panic!("unexpected safety rule: {:?}", other),
+		}
+
+
+		
+						
 	}
 	
 }
