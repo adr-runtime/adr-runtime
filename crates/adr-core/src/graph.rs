@@ -36,3 +36,10 @@ pub struct Graph {
     pub header: GraphHeader,
     pub nodes: Vec<Node>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExecutionPlan {
+    pub nodes: Vec<NodeId>,
+    pub parallel: Vec<Vec<NodeId>>,
+    pub checkpoints: Vec<NodeId>,
+}

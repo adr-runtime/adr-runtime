@@ -75,12 +75,9 @@ pub struct AdrNodeMeta {
 /// Full Graph-IR types live in adr-core (Layer 1).
 /// This stub will be replaced by a proper reference in Phase 8.
 pub struct AdrGraph {
-    /// Node IDs available for planning
-    pub node_ids: Vec<NodeId>,
     pub nodes: Vec<AdrNodeMeta>,
-    // Full node data will be fetched from adr-core via a read-only interface
-    // node_store: &'a dyn NodeStore,
 }
+
 
 // -----------------------------------------------------------------------------
 // IntentResolver Trait
@@ -273,8 +270,7 @@ mod tests {
     fn resolver_blocks_when_runtime_not_running() {
         let resolver = RuleBasedResolver;
         let intent = make_intent();
-		let graph = AdrGraph {
-			node_ids: vec![],
+		let graph = AdrGraph {			
 			nodes: vec![],
 		};
         let policy = stub_policy();
@@ -289,8 +285,7 @@ mod tests {
     fn resolver_returns_no_plan_when_graph_empty() {
         let resolver = RuleBasedResolver;
         let intent = make_intent();
-		let graph = AdrGraph {
-			node_ids: vec![],
+		let graph = AdrGraph {			
 			nodes: vec![],
 		};
         let policy = stub_policy();
@@ -308,8 +303,7 @@ mod tests {
         let intent = make_intent();
         let id1 = Uuid::new_v4();
         let id2 = Uuid::new_v4();
-		let graph = AdrGraph {
-			node_ids: vec![id1, id2],
+		let graph = AdrGraph {			
 			nodes: vec![
 				AdrNodeMeta { id: id1, effect: Effect::None },
 				AdrNodeMeta { id: id2, effect: Effect::None },
@@ -332,8 +326,7 @@ mod tests {
 		let intent = make_intent();
 
 		let id1 = Uuid::new_v4();
-		let graph = AdrGraph {
-			node_ids: vec![id1],
+		let graph = AdrGraph {			
 			nodes: vec![
 				AdrNodeMeta {
 					id: id1,
@@ -394,8 +387,7 @@ mod tests {
 		let id1 = Uuid::new_v4();
 		let id2 = Uuid::new_v4();
 
-		let graph = AdrGraph {
-			node_ids: vec![id1, id2],
+		let graph = AdrGraph {			
 			nodes: vec![
 				AdrNodeMeta {
 					id: id1,

@@ -1,5 +1,5 @@
 use crate::capability::CapabilitySet;
-use crate::graph::{Effect, ExecClass, Node};
+use crate::graph::{Effect, ExecClass, Graph, Node};
 use crate::killswitch::{KillSwitchChannel, StopSignal};
 use crate::runtime_state::RuntimeState;
 
@@ -8,7 +8,9 @@ pub enum AdrRuntimeError {
     StateBlocked(RuntimeState),
     RealtimeViolation,
     CapabilityNotGranted(u64),
+    PlanNodeMissing(crate::graph::NodeId),
 }
+
 
 pub struct AdrRuntime<C: KillSwitchChannel> {
     state: RuntimeState,
@@ -79,7 +81,36 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
             },
         }
     }
+	
+	
+	pub fn execute_plan(
+		&mut self,
+		plan: &crate::graph::ExecutionPlan,
+		graph: &Graph,
+	) -> Result<Vec<crate::graph::NodeId>, AdrRuntimeError> {
+		let mut executed = Vec::new();
 
+		for node_id in &plan.nodes {
+			// Kill switch must be checked before each node in the plan.
+			self.poll_kill_switch();
+
+			// For plan execution, only the Running state may start a new node.
+			if self.state != RuntimeState::Running {
+				return Err(AdrRuntimeError::StateBlocked(self.state));
+			}
+
+			let Some(node) = graph.nodes.iter().find(|n| &n.id == node_id) else {
+				return Err(AdrRuntimeError::PlanNodeMissing(*node_id));
+			};
+
+			self.execute_node(node)?;
+			executed.push(*node_id);
+		}
+
+		Ok(executed)
+	}
+
+	
     fn poll_kill_switch(&mut self) {
         if let Some(sig) = self.kill.poll() {
             match sig {

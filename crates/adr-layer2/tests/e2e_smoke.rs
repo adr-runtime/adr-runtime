@@ -72,8 +72,7 @@ fn e2e_resolve_then_execute_noop() {
 
     let id1 = Uuid::new_v4();
     let id2 = Uuid::new_v4();
-	let graph = AdrGraph {
-		node_ids: vec![id1, id2],
+	let graph = AdrGraph {		
 		nodes: vec![
 			adr_layer2::resolver::AdrNodeMeta { id: id1, effect: adr_core::Effect::None },
 			adr_layer2::resolver::AdrNodeMeta { id: id2, effect: adr_core::Effect::None },

@@ -9,5 +9,6 @@ pub mod audit;
 
 pub use runtime::{AdrRuntime, AdrRuntimeError};
 pub use runtime_state::RuntimeState;
-pub use graph::{Effect, ExecClass, Graph, GraphHeader, Node, NodeId};
+
+pub use graph::{Effect, ExecClass, ExecutionPlan, Graph, GraphHeader, Node, NodeId};
 pub use audit::{ActionKind, ActionLogEntry, Evidence};

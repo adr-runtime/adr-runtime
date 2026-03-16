@@ -137,15 +137,7 @@ pub struct IntentNode {
 // Output of the IntentResolver – ordered list of nodes to execute.
 // -----------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecutionPlan {
-    /// Sequentially ordered node IDs
-    pub nodes:       Vec<NodeId>,
-    /// Groups of node IDs that can run in parallel (no shared edges)
-    pub parallel:    Vec<Vec<NodeId>>,
-    /// Mandatory human review stops (checkpoint nodes)
-    pub checkpoints: Vec<NodeId>,
-}
+pub type ExecutionPlan = adr_core::ExecutionPlan;
 
 // -----------------------------------------------------------------------------
 // Resolver Result (P7 + confidence_safety from Phase 5)
