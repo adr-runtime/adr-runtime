@@ -82,7 +82,11 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
         }
     }
 	
-	
+	// NOTE:
+	// execute_plan is stricter than execute_node.
+	// A node that has already started may finish when state == Stopping,
+	// but no new node may start unless the runtime is Running.
+	// This ensures the kill switch can stop plans between nodes.	
 	pub fn execute_plan(
 		&mut self,
 		plan: &crate::graph::ExecutionPlan,
