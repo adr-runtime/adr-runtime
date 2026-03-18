@@ -17,12 +17,15 @@
 // =============================================================================
 
 use adr_core::{Effect, RuntimeState};
+use adr_core::capability_name_to_mask;
 use crate::policy::CompiledPolicy;
 use crate::types::{
     ExecClass, ExecutionPlan, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation,
     Severity,
 };
 use crate::policy_engine::PolicyEngine; 
+
+
 
 // -----------------------------------------------------------------------------
 // Runtime Context
@@ -133,7 +136,24 @@ impl IntentResolver for RuleBasedResolver {
                 }],
             };
         }
-
+		
+		for cap in &intent.capabilities {
+			if capability_name_to_mask(&cap.0).is_none() {
+				return ResolverResult {
+					plan: None,
+					confidence_semantic: 0.0,
+					confidence_safety: 0.0,
+					open_human_gates: vec![],
+					rejected_plans: vec![],
+					safety_violations: vec![SafetyViolation {
+						node_id: intent.id,
+						rule: SafetyRule::CapabilityOutOfScope,
+						severity: Severity::Error,
+					}],
+				};
+			}
+		}
+		
         // Phase 16 skeleton: resolver-side policy filter.
         // Currently empty policy = allow all.
 		let policy_engine = PolicyEngine::from_compiled_policy(_policy);
@@ -214,8 +234,9 @@ impl IntentResolver for RuleBasedResolver {
 mod tests {
     use super::*;
     use uuid::Uuid;
-	use crate::types::TrustTier;
+	use crate::types::{Capability, TrustTier};
 	use crate::policy::{AuditConfig, KillSwitchConfig, LogLevel, MerkleRootHolder, TimeSource};
+
 
     fn make_context(state: RuntimeStateSnapshot) -> RuntimeContext {
         RuntimeContext {
@@ -437,6 +458,44 @@ mod tests {
 				assert_eq!(msg, "effect_not_allowed_by_policy");
 			}
 			other => panic!("unexpected safety rule: {:?}", other),
+		}
+	}
+	
+	
+	#[test]
+	fn resolver_blocks_unknown_capability_with_explicit_violation() {
+		let resolver = RuleBasedResolver;
+
+		let intent = IntentNode {
+			id: Uuid::new_v4(),
+			goal: "test".to_string(),
+			constraints: vec![],
+			trust_tier: TrustTier::AiAutonomous,
+			capabilities: vec![Capability("unknown_cap".to_string())],
+		};
+
+		let id1 = Uuid::new_v4();
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+				},
+			],
+		};
+
+		let policy = stub_policy();
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+
+		assert!(result.plan.is_none());
+		assert_eq!(result.confidence_safety, 0.0);
+		assert_eq!(result.safety_violations.len(), 1);
+
+		match result.safety_violations[0].rule {
+			SafetyRule::CapabilityOutOfScope => {}
+			ref other => panic!("expected CapabilityOutOfScope, got {:?}", other),
 		}
 	}
 	

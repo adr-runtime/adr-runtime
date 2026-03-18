@@ -93,4 +93,21 @@ fn policy_allows_permitted_effect() {
     assert!(engine.allows_with_effect(&intent, &Effect::FsWrite));
 }
 
+#[test]
+fn rejects_intent_with_unknown_capability() {
+    let engine = PolicyEngine::new(vec![]);
+
+    let intent = IntentNode {
+        id: uuid::Uuid::new_v4(),
+        goal: "test".to_string(),
+        constraints: vec![],
+        trust_tier: TrustTier::AiAutonomous,
+		capabilities: vec![Capability("unknown_cap".to_string())],
+
+    };
+
+    assert!(!engine.allows(&intent));
+}
+
+
 

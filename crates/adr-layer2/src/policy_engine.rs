@@ -1,4 +1,5 @@
 use adr_core::Effect;
+use adr_core::capability_name_to_mask;
 use crate::policy::CompiledPolicy;
 use crate::types::{Capability, IntentNode, TrustTier};
 
@@ -32,6 +33,13 @@ impl PolicyEngine {
 	}
 
 	pub fn allows(&self, node: &IntentNode) -> bool {
+		// Phase 18: capability name must be known / mappable
+		for cap in &node.capabilities {
+			if capability_name_to_mask(&cap.0).is_none() {
+				return false;
+			}
+		}
+				
 		for rule in &self.rules {
 			if let Some(min_tier) = &rule.minimum_trust_tier {
 				if &node.trust_tier < min_tier {
