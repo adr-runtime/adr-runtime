@@ -75,6 +75,7 @@ impl From<RuntimeState> for RuntimeStateSnapshot {
 pub struct AdrNodeMeta {
     pub id: NodeId,
     pub effect: Effect,
+    pub dependencies: Vec<NodeId>,
 }
 
 // -----------------------------------------------------------------------------
@@ -196,8 +197,6 @@ impl IntentResolver for RuleBasedResolver {
 		}
 		
 
-
-
 		let mut allowed_ids = Vec::new();
 		let mut policy_violations = Vec::new();
 
@@ -213,8 +212,25 @@ impl IntentResolver for RuleBasedResolver {
 				continue;
 			}
 
+			let dependencies_satisfied = node
+				.dependencies
+				.iter()
+				.all(|dep| allowed_ids.contains(dep));
+
+			if !dependencies_satisfied {
+				policy_violations.push(SafetyViolation {
+					node_id: node.id,
+					rule: SafetyRule::PolicyConstraintViolated(
+						"dependency_not_satisfied".to_string(),
+					),
+					severity: Severity::Error,
+				});
+				continue;
+			}
+
 			allowed_ids.push(node.id);
 		}
+
 
 		if allowed_ids.is_empty() {
 			return ResolverResult {
@@ -350,8 +366,8 @@ mod tests {
         let id2 = Uuid::new_v4();
 		let graph = AdrGraph {			
 			nodes: vec![
-				AdrNodeMeta { id: id1, effect: Effect::None },
-				AdrNodeMeta { id: id2, effect: Effect::None },
+				AdrNodeMeta { id: id1, effect: Effect::None, dependencies: vec![],},
+				AdrNodeMeta { id: id2, effect: Effect::None, dependencies: vec![],},
 			],
 		};
 
@@ -376,6 +392,7 @@ mod tests {
 				AdrNodeMeta {
 					id: id1,
 					effect: Effect::FsWrite,
+					dependencies: vec![],
 				},
 			],
 		};
@@ -432,15 +449,17 @@ mod tests {
 		let id1 = Uuid::new_v4();
 		let id2 = Uuid::new_v4();
 
-		let graph = AdrGraph {			
+		let graph = AdrGraph {
 			nodes: vec![
 				AdrNodeMeta {
 					id: id1,
 					effect: Effect::None,
+					dependencies: vec![],
 				},
 				AdrNodeMeta {
 					id: id2,
 					effect: Effect::FsWrite,
+					dependencies: vec![],
 				},
 			],
 		};
@@ -504,6 +523,7 @@ mod tests {
 				AdrNodeMeta {
 					id: id1,
 					effect: Effect::None,
+					dependencies: vec![],
 				},
 			],
 		};
@@ -541,6 +561,7 @@ mod tests {
 				AdrNodeMeta {
 					id: id1,
 					effect: Effect::None,
+					dependencies: vec![],
 				},
 			],
 		};
@@ -565,6 +586,49 @@ mod tests {
 			ref other => panic!("expected CapabilityOutOfScope, got {:?}", other),
 		}
 	}
+	
+	
+	#[test]
+	fn resolver_blocks_node_when_dependency_is_not_satisfied() {
+		let resolver = RuleBasedResolver;
+		let intent = make_intent();
+
+		let id1 = Uuid::new_v4();
+		let id2 = Uuid::new_v4();
+
+		// Deliberately place dependent node first, so dependency is not yet satisfied.
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id2,
+					effect: Effect::None,
+					dependencies: vec![id1],
+				},
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+					dependencies: vec![],
+				},
+			],
+		};
+
+		let policy = stub_policy();
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+
+		assert!(result.plan.is_some());
+		assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1]);
+		assert_eq!(result.safety_violations.len(), 1);
+
+		match &result.safety_violations[0].rule {
+			SafetyRule::PolicyConstraintViolated(msg) => {
+				assert_eq!(msg, "dependency_not_satisfied");
+			}
+			other => panic!("unexpected safety rule: {:?}", other),
+		}
+	}
+	
 	
 	
 }
