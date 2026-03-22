@@ -41,6 +41,7 @@ pub struct RuntimeContext {
     pub runtime_state: RuntimeStateSnapshot,
     /// Scheduler class active in the current execution context
     pub scheduler_class: ExecClass,
+	pub active_capability_masks: Vec<u64>,
 }
 
 /// Snapshot of the runtime state – mirrored from Layer 1.
@@ -138,7 +139,22 @@ impl IntentResolver for RuleBasedResolver {
         }
 		
 		for cap in &intent.capabilities {
-			if capability_name_to_mask(&cap.0).is_none() {
+			let Some(mask) = capability_name_to_mask(&cap.0) else {
+				return ResolverResult {
+					plan: None,
+					confidence_semantic: 0.0,
+					confidence_safety: 0.0,
+					open_human_gates: vec![],
+					rejected_plans: vec![],
+					safety_violations: vec![SafetyViolation {
+						node_id: intent.id,
+						rule: SafetyRule::CapabilityOutOfScope,
+						severity: Severity::Error,
+					}],
+				};
+			};
+
+			if !context.active_capability_masks.contains(&mask) {
 				return ResolverResult {
 					plan: None,
 					confidence_semantic: 0.0,
@@ -153,6 +169,7 @@ impl IntentResolver for RuleBasedResolver {
 				};
 			}
 		}
+
 		
         // Phase 16 skeleton: resolver-side policy filter.
         // Currently empty policy = allow all.
@@ -243,6 +260,7 @@ mod tests {
             active_capabilities: vec![],
             runtime_state: state,
             scheduler_class: ExecClass::Orchestrated,
+			active_capability_masks: vec![],
         }
     }
 
@@ -486,6 +504,49 @@ mod tests {
 
 		let policy = stub_policy();
 		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+
+		assert!(result.plan.is_none());
+		assert_eq!(result.confidence_safety, 0.0);
+		assert_eq!(result.safety_violations.len(), 1);
+
+		match result.safety_violations[0].rule {
+			SafetyRule::CapabilityOutOfScope => {}
+			ref other => panic!("expected CapabilityOutOfScope, got {:?}", other),
+		}
+	}	
+	
+	#[test]
+	fn resolver_blocks_capability_not_present_in_runtime_context() {
+		let resolver = RuleBasedResolver;
+
+		let intent = IntentNode {
+			id: Uuid::new_v4(),
+			goal: "test".to_string(),
+			constraints: vec![],
+			trust_tier: TrustTier::AiAutonomous,
+			capabilities: vec![Capability("fs_write".to_string())],
+		};
+
+		let id1 = Uuid::new_v4();
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+				},
+			],
+		};
+
+		let policy = stub_policy();
+
+		let context = RuntimeContext {
+			runtime_state: RuntimeStateSnapshot::Running,
+			scheduler_class: ExecClass::Orchestrated,
+			active_capabilities: vec![],
+			active_capability_masks: vec![], // <-- fs_write fehlt hier
+		};
 
 		let result = resolver.resolve(&intent, &graph, &policy, &context);
 

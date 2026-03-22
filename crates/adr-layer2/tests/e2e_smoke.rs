@@ -22,6 +22,7 @@ fn make_context(state: RuntimeState) -> RuntimeContext {
         active_capabilities: vec![],
         runtime_state: RuntimeStateSnapshot::from(state),
         scheduler_class: ExecClass::Orchestrated,
+		active_capability_masks: vec![],
     }
 }
 
