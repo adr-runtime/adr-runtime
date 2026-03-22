@@ -32,6 +32,7 @@ fn orchestrated_node_executes() {
 		exec_class: ExecClass::Orchestrated,
 		effect: Effect::NetExternal,
 		capabilities: vec![],
+		dependencies: vec![],
 	};
 
     let mut rt = AdrRuntime::new(NoSignal);
@@ -46,6 +47,7 @@ fn realtime_safe_node_with_effect_is_rejected() {
         exec_class: ExecClass::RealtimeSafe,
         effect: Effect::NetExternal,
 		capabilities: vec![],
+		dependencies: vec![],
     };
 
     let mut rt = AdrRuntime::new(NoSignal);
@@ -65,6 +67,7 @@ fn freeze_blocks_execution() {
         exec_class: ExecClass::Orchestrated,
         effect: Effect::None,
 		capabilities: vec![],
+		dependencies: vec![],
     };
 
     let mut rt = AdrRuntime::new(FreezeOnce(std::sync::Mutex::new(false)));
@@ -85,6 +88,7 @@ fn node_without_granted_capability_is_rejected() {
         exec_class: ExecClass::Orchestrated,
         effect: Effect::FsWrite,
         capabilities: vec![1 << 3],
+		dependencies: vec![],
     };
 
     let mut rt = AdrRuntime::new(NoSignal);
@@ -107,6 +111,7 @@ fn node_with_granted_capability_executes() {
         exec_class: ExecClass::Orchestrated,
         effect: Effect::FsWrite,
         capabilities: vec![1 << 3],
+		dependencies: vec![],
     };
 
     let mut rt = AdrRuntime::new(NoSignal);

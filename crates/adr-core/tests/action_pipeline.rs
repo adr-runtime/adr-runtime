@@ -21,6 +21,7 @@ fn action_pipeline_resolve_execute_log() {
 		exec_class: ExecClass::Orchestrated,
 		effect: Effect::NetExternal,
 		capabilities: vec![],
+		dependencies: vec![],
 	};
 
     let graph = Graph {

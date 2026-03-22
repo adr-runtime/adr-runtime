@@ -28,6 +28,7 @@ fn execute_plan_runs_all_nodes_in_order() {
                 exec_class: ExecClass::Orchestrated,
                 effect: Effect::None,
                 capabilities: vec![],
+				dependencies: vec![],
             },
             Node {
                 id: id2,
@@ -35,6 +36,7 @@ fn execute_plan_runs_all_nodes_in_order() {
                 exec_class: ExecClass::Orchestrated,
                 effect: Effect::None,
                 capabilities: vec![],
+				dependencies: vec![],
             },
         ],
     };
@@ -69,6 +71,7 @@ fn execute_plan_fails_when_node_is_missing_from_graph() {
                 exec_class: ExecClass::Orchestrated,
                 effect: Effect::None,
                 capabilities: vec![],
+				dependencies: vec![],
             },
         ],
     };
@@ -125,6 +128,7 @@ fn execute_plan_stops_between_nodes_when_killswitch_triggers() {
                 exec_class: ExecClass::Orchestrated,
                 effect: Effect::None,
                 capabilities: vec![],
+				dependencies: vec![],
             },
             Node {
                 id: id2,
@@ -132,6 +136,7 @@ fn execute_plan_stops_between_nodes_when_killswitch_triggers() {
                 exec_class: ExecClass::Orchestrated,
                 effect: Effect::None,
                 capabilities: vec![],
+				dependencies: vec![],
             },
         ],
     };

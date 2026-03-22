@@ -29,6 +29,7 @@ pub struct Node {
     pub exec_class: ExecClass,
     pub effect: Effect,
     pub capabilities: Vec<u64>,
+    pub dependencies: Vec<NodeId>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

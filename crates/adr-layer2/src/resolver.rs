@@ -41,7 +41,13 @@ pub struct RuntimeContext {
     pub runtime_state: RuntimeStateSnapshot,
     /// Scheduler class active in the current execution context
     pub scheduler_class: ExecClass,
+	
+	/// Snapshot of runtime capability masks at resolve time.
+	/// The executor re-enforces capability checks independently.
+	/// These masks may diverge if capabilities are revoked between
+	/// resolve and execute.
 	pub active_capability_masks: Vec<u64>,
+
 }
 
 /// Snapshot of the runtime state – mirrored from Layer 1.
