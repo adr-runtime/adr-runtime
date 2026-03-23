@@ -121,6 +121,22 @@ pub trait IntentResolver {
 /// Phase 8: implements the 5-step selection algorithm.
 pub struct RuleBasedResolver;
 
+fn remaining_nodes_form_cycle(remaining: &[AdrNodeMeta]) -> bool {
+	if remaining.is_empty() {
+		return false;
+	}
+
+	let remaining_ids: Vec<NodeId> = remaining.iter().map(|n| n.id).collect();
+
+	remaining.iter().all(|node| {
+		!node.dependencies.is_empty()
+			&& node
+				.dependencies
+				.iter()
+				.all(|dep| remaining_ids.contains(dep))
+	})
+}	
+
 impl IntentResolver for RuleBasedResolver {
     fn resolve(
         &self,
@@ -199,36 +215,61 @@ impl IntentResolver for RuleBasedResolver {
 
 		let mut allowed_ids = Vec::new();
 		let mut policy_violations = Vec::new();
+		let mut remaining_nodes = graph.nodes.clone();
 
-		for node in &graph.nodes {
-			if !policy_engine.allows_with_effect(intent, &node.effect) {
-				policy_violations.push(SafetyViolation {
-					node_id: node.id,
-					rule: SafetyRule::PolicyConstraintViolated(
-						"effect_not_allowed_by_policy".to_string(),
-					),
-					severity: Severity::Error,
-				});
-				continue;
+		loop {
+			let mut progress = false;
+			let mut next_remaining = Vec::new();
+
+			for node in remaining_nodes {
+				if !policy_engine.allows_with_effect(intent, &node.effect) {
+					policy_violations.push(SafetyViolation {
+						node_id: node.id,
+						rule: SafetyRule::PolicyConstraintViolated(
+							"effect_not_allowed_by_policy".to_string(),
+						),
+						severity: Severity::Error,
+					});
+					continue;
+				}
+
+				let dependencies_satisfied = node
+					.dependencies
+					.iter()
+					.all(|dep| allowed_ids.contains(dep));
+
+				if dependencies_satisfied {
+					allowed_ids.push(node.id);
+					progress = true;
+				} else {
+					next_remaining.push(node);
+				}
 			}
 
-			let dependencies_satisfied = node
-				.dependencies
-				.iter()
-				.all(|dep| allowed_ids.contains(dep));
-
-			if !dependencies_satisfied {
-				policy_violations.push(SafetyViolation {
-					node_id: node.id,
-					rule: SafetyRule::PolicyConstraintViolated(
-						"dependency_not_satisfied".to_string(),
-					),
-					severity: Severity::Error,
-				});
-				continue;
+			if next_remaining.is_empty() {
+				break;
 			}
 
-			allowed_ids.push(node.id);
+			if !progress {
+				let cycle_detected = remaining_nodes_form_cycle(&next_remaining);
+
+				for node in next_remaining {
+					policy_violations.push(SafetyViolation {
+						node_id: node.id,
+						rule: SafetyRule::PolicyConstraintViolated(
+							if cycle_detected {
+								"dependency_cycle_detected".to_string()
+							} else {
+								"dependency_not_satisfied".to_string()
+							},
+						),
+						severity: Severity::Error,
+					});
+				}
+				break;
+			}
+
+			remaining_nodes = next_remaining;
 		}
 
 
@@ -263,6 +304,9 @@ impl IntentResolver for RuleBasedResolver {
 		}
 
     }
+		
+
+	
 }
 
 // -----------------------------------------------------------------------------
@@ -589,14 +633,14 @@ mod tests {
 	
 	
 	#[test]
-	fn resolver_blocks_node_when_dependency_is_not_satisfied() {
+	fn resolver_reorders_nodes_when_dependency_can_be_satisfied_later() {
 		let resolver = RuleBasedResolver;
 		let intent = make_intent();
 
 		let id1 = Uuid::new_v4();
 		let id2 = Uuid::new_v4();
 
-		// Deliberately place dependent node first, so dependency is not yet satisfied.
+		// Dependent node comes first, but should still be planned after its dependency.
 		let graph = AdrGraph {
 			nodes: vec![
 				AdrNodeMeta {
@@ -618,7 +662,35 @@ mod tests {
 		let result = resolver.resolve(&intent, &graph, &policy, &context);
 
 		assert!(result.plan.is_some());
-		assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1]);
+		assert_eq!(result.plan.as_ref().unwrap().nodes, vec![id1, id2]);
+		assert!(result.safety_violations.is_empty());
+	}
+	
+
+	#[test]
+	fn resolver_blocks_node_when_dependency_cannot_be_satisfied() {
+		let resolver = RuleBasedResolver;
+		let intent = make_intent();
+
+		let missing_id = Uuid::new_v4();
+		let id1 = Uuid::new_v4();
+
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+					dependencies: vec![missing_id],
+				},
+			],
+		};
+
+		let policy = stub_policy();
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+
+		assert!(result.plan.is_none());
 		assert_eq!(result.safety_violations.len(), 1);
 
 		match &result.safety_violations[0].rule {
@@ -628,7 +700,6 @@ mod tests {
 			other => panic!("unexpected safety rule: {:?}", other),
 		}
 	}
-	
 	
 	
 }
