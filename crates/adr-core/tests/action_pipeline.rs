@@ -46,6 +46,7 @@ fn action_pipeline_resolve_execute_log() {
 			graph_version: graph.header.graph_version.clone(),
 			policy_version: "phase12-test-policy".to_string(),
 			contract_hash: "noop-contract".to_string(),
+			approved_by: None,
 		},
 		prev_hash: None,
 		entry_hash: "dummy_hash".to_string(),

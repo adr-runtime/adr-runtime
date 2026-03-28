@@ -12,6 +12,7 @@ fn action_log_roundtrip_json() {
 			graph_version: "0.1".to_string(),
 			policy_version: "test-policy-1".to_string(),
 			contract_hash: "abc123".to_string(),
+			approved_by: Some("operator".to_string()),
 		},
 		prev_hash: None,
 		entry_hash: String::new(),
@@ -26,6 +27,7 @@ fn action_log_roundtrip_json() {
     assert_eq!(decoded.evidence.graph_version, "0.1");
     assert_eq!(decoded.evidence.policy_version, "test-policy-1");
     assert_eq!(decoded.evidence.contract_hash, "abc123");
+    assert_eq!(decoded.evidence.approved_by.as_deref(), Some("operator"));
 	assert!(!decoded.entry_hash.is_empty());
 	assert_eq!(decoded.prev_hash, None);
 }
