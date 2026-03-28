@@ -165,6 +165,9 @@ pub struct ResolverResult {
     /// Nodes in the plan that require human approval before execution.
     pub open_human_gates:    Vec<NodeId>,
 
+    /// Approval records for checkpoint nodes. `approved_by == None` means pending.
+    pub pending_approvals:   Vec<ApprovalContext>,
+
     /// Plans that were considered but rejected, with reasons.
     pub rejected_plans:      Vec<RejectedPlan>,
 
@@ -176,6 +179,13 @@ pub struct ResolverResult {
 pub struct RejectedPlan {
     pub nodes:  Vec<NodeId>,
     pub reason: RejectionReason,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApprovalContext {
+    pub checkpoint_node: NodeId,
+    pub approved_by:     Option<String>,
+    pub approved_at:     Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -263,6 +273,14 @@ pub fn should_execute(result: &ResolverResult, thresholds: &Thresholds) -> Execu
             violations: result.safety_violations.clone(),
         };
     }
+    if !result.open_human_gates.is_empty() {
+        return ExecutionDecision::HumanReviewRequired {
+            reason: format!(
+                "{} checkpoint node(s) require human approval",
+                result.open_human_gates.len()
+            ),
+        };
+    }
     // Semantic confidence gate
     if result.confidence_semantic < thresholds.semantic_min {
         return ExecutionDecision::HumanReviewRequired {
@@ -273,4 +291,36 @@ pub fn should_execute(result: &ResolverResult, thresholds: &Thresholds) -> Execu
         };
     }
     ExecutionDecision::Approved
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn should_execute_requires_human_review_when_open_human_gates_exist() {
+        let checkpoint = Uuid::nil();
+        let result = ResolverResult {
+            plan: Some(adr_core::ExecutionPlan {
+                nodes: vec![checkpoint],
+                parallel: vec![vec![checkpoint]],
+                checkpoints: vec![checkpoint],
+            }),
+            confidence_semantic: 1.0,
+            confidence_safety: 1.0,
+            open_human_gates: vec![checkpoint],
+            pending_approvals: vec![ApprovalContext {
+                checkpoint_node: checkpoint,
+                approved_by: None,
+                approved_at: None,
+            }],
+            rejected_plans: vec![],
+            safety_violations: vec![],
+        };
+
+        match should_execute(&result, &Thresholds::default()) {
+            ExecutionDecision::HumanReviewRequired { .. } => {}
+            other => panic!("expected HumanReviewRequired, got {:?}", other),
+        }
+    }
 }

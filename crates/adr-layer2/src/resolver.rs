@@ -22,8 +22,8 @@ use adr_core::{Effect, RuntimeState};
 use adr_core::capability_name_to_mask;
 use crate::policy::CompiledPolicy;
 use crate::types::{
-    ExecClass, ExecutionPlan, IntentNode, NodeId, ResolverResult, SafetyRule, SafetyViolation,
-    Severity,
+    ApprovalContext, ExecClass, ExecutionPlan, IntentNode, NodeId, ResolverResult, SafetyRule,
+    SafetyViolation, Severity, TrustTier,
 };
 use crate::policy_engine::PolicyEngine; 
 
@@ -78,6 +78,7 @@ pub struct AdrNodeMeta {
     pub id: NodeId,
     pub effect: Effect,
     pub dependencies: Vec<NodeId>,
+    pub trust_tier: Option<TrustTier>,
 }
 
 // -----------------------------------------------------------------------------
@@ -187,7 +188,7 @@ impl IntentResolver for RuleBasedResolver {
         &self,
         intent: &IntentNode,
         graph: &AdrGraph,
-        _policy: &CompiledPolicy,
+        policy: &CompiledPolicy,
         context: &RuntimeContext,
     ) -> ResolverResult {
         // Safety must be checked before any policy logic.
@@ -196,8 +197,9 @@ impl IntentResolver for RuleBasedResolver {
                 plan: None,
                 confidence_semantic: 0.0,
                 confidence_safety: 0.0,
-                open_human_gates: vec![],
-                rejected_plans: vec![],
+				open_human_gates: vec![],
+				pending_approvals: vec![],
+				rejected_plans: vec![],
                 safety_violations: vec![SafetyViolation {
                     node_id: intent.id,
                     rule: SafetyRule::PolicyConstraintViolated("runtime_not_running".to_string()),
@@ -213,6 +215,7 @@ impl IntentResolver for RuleBasedResolver {
 					confidence_semantic: 0.0,
 					confidence_safety: 0.0,
 					open_human_gates: vec![],
+					pending_approvals: vec![],
 					rejected_plans: vec![],
 					safety_violations: vec![SafetyViolation {
 						node_id: intent.id,
@@ -228,6 +231,7 @@ impl IntentResolver for RuleBasedResolver {
 					confidence_semantic: 0.0,
 					confidence_safety: 0.0,
 					open_human_gates: vec![],
+					pending_approvals: vec![],
 					rejected_plans: vec![],
 					safety_violations: vec![SafetyViolation {
 						node_id: intent.id,
@@ -241,13 +245,14 @@ impl IntentResolver for RuleBasedResolver {
 		
         // Phase 16 skeleton: resolver-side policy filter.
         // Currently empty policy = allow all.
-		let policy_engine = PolicyEngine::from_compiled_policy(_policy);
+		let policy_engine = PolicyEngine::from_compiled_policy(policy);
 		if graph.nodes.is_empty() {
 			return ResolverResult {
 				plan: None,
 				confidence_semantic: 0.0,
 				confidence_safety: 0.0,
 				open_human_gates: vec![],
+				pending_approvals: vec![],
 				rejected_plans: vec![],
 				safety_violations: vec![SafetyViolation {
 					node_id: intent.id,
@@ -263,6 +268,7 @@ impl IntentResolver for RuleBasedResolver {
 				confidence_semantic: 0.0,
 				confidence_safety: 0.0,
 				open_human_gates: vec![],
+				pending_approvals: vec![],
 				rejected_plans: vec![],
 				safety_violations: vec![SafetyViolation {
 					node_id,
@@ -393,15 +399,48 @@ impl IntentResolver for RuleBasedResolver {
 				confidence_semantic: 0.0,
 				confidence_safety: 0.0,
 				open_human_gates: vec![],
+				pending_approvals: vec![],
 				rejected_plans: vec![],
 				safety_violations: policy_violations,
 			};
 		}
 
+		let allowed_id_set: HashSet<NodeId> = allowed_ids.iter().copied().collect();
+		let checkpoints: Vec<NodeId> = allowed_nodes
+			.iter()
+			.filter(|node| allowed_id_set.contains(&node.id))
+			.filter_map(|node| {
+				let mut effective_trust_tier = node
+					.trust_tier
+					.clone()
+					.unwrap_or_else(|| intent.trust_tier.clone());
+
+				if let Some(min_tier) = &policy.minimum_trust_tier {
+					if effective_trust_tier < *min_tier {
+						effective_trust_tier = min_tier.clone();
+					}
+				}
+
+				if effective_trust_tier == TrustTier::HumanRequired {
+					Some(node.id)
+				} else {
+					None
+				}
+			})
+			.collect();
+		let pending_approvals: Vec<ApprovalContext> = checkpoints
+			.iter()
+			.map(|checkpoint_node| ApprovalContext {
+				checkpoint_node: *checkpoint_node,
+				approved_by: None,
+				approved_at: None,
+			})
+			.collect();
+
 		let plan = ExecutionPlan {
 			nodes: allowed_ids,
 			parallel: parallel_groups,
-			checkpoints: vec![],
+			checkpoints: checkpoints.clone(),
 		};
 
 
@@ -412,7 +451,8 @@ impl IntentResolver for RuleBasedResolver {
 			plan: Some(plan),
 			confidence_semantic: 1.0,
 			confidence_safety: if policy_violations.is_empty() { 1.0 } else { 0.0 },
-			open_human_gates: vec![],
+			open_human_gates: checkpoints,
+			pending_approvals,
 			rejected_plans: vec![],
 			safety_violations: policy_violations,
 		}
@@ -524,8 +564,8 @@ mod tests {
         let id2 = Uuid::new_v4();
 		let graph = AdrGraph {			
 			nodes: vec![
-				AdrNodeMeta { id: id1, effect: Effect::None, dependencies: vec![],},
-				AdrNodeMeta { id: id2, effect: Effect::None, dependencies: vec![],},
+				AdrNodeMeta { id: id1, effect: Effect::None, dependencies: vec![], trust_tier: None,},
+				AdrNodeMeta { id: id2, effect: Effect::None, dependencies: vec![], trust_tier: None,},
 			],
 		};
 
@@ -551,6 +591,7 @@ mod tests {
 					id: id1,
 					effect: Effect::FsWrite,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -613,11 +654,13 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id2,
 					effect: Effect::FsWrite,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -683,6 +726,7 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -721,6 +765,7 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -762,11 +807,13 @@ mod tests {
 					id: id2,
 					effect: Effect::None,
 					dependencies: vec![id1],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -797,16 +844,19 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id2,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id3,
 					effect: Effect::None,
 					dependencies: vec![id1, id2],
+					trust_tier: None,
 				},
 			],
 		};
@@ -822,6 +872,83 @@ mod tests {
 
 		let parallel_flat: Vec<NodeId> = plan.parallel.iter().flatten().copied().collect();
 		assert_eq!(parallel_flat, plan.nodes);
+	}
+
+	#[test]
+	fn resolver_marks_all_planned_nodes_as_checkpoints_when_human_required() {
+		let resolver = RuleBasedResolver;
+		let mut intent = make_intent();
+		intent.trust_tier = TrustTier::HumanRequired;
+
+		let id1 = Uuid::new_v4();
+		let id2 = Uuid::new_v4();
+
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+					dependencies: vec![],
+					trust_tier: None,
+				},
+				AdrNodeMeta {
+					id: id2,
+					effect: Effect::None,
+					dependencies: vec![],
+					trust_tier: None,
+				},
+			],
+		};
+
+		let policy = stub_policy();
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+		let plan = result.plan.expect("expected plan");
+
+		assert_eq!(plan.nodes, vec![id1, id2]);
+		assert_eq!(plan.checkpoints, vec![id1, id2]);
+		assert_eq!(result.open_human_gates, vec![id1, id2]);
+		assert_eq!(result.pending_approvals.len(), 2);
+	}
+
+	#[test]
+	fn resolver_marks_only_human_required_nodes_as_checkpoints_when_node_tiers_exist() {
+		let resolver = RuleBasedResolver;
+		let intent = make_intent();
+
+		let id1 = Uuid::new_v4();
+		let id2 = Uuid::new_v4();
+
+		let graph = AdrGraph {
+			nodes: vec![
+				AdrNodeMeta {
+					id: id1,
+					effect: Effect::None,
+					dependencies: vec![],
+					trust_tier: None,
+				},
+				AdrNodeMeta {
+					id: id2,
+					effect: Effect::None,
+					dependencies: vec![],
+					trust_tier: Some(TrustTier::HumanRequired),
+				},
+			],
+		};
+
+		let policy = stub_policy();
+		let context = make_context(RuntimeStateSnapshot::Running);
+
+		let result = resolver.resolve(&intent, &graph, &policy, &context);
+		let plan = result.plan.expect("expected plan");
+
+		assert_eq!(plan.nodes, vec![id1, id2]);
+		assert_eq!(plan.checkpoints, vec![id2]);
+		assert_eq!(result.open_human_gates, vec![id2]);
+		assert_eq!(result.pending_approvals.len(), 1);
+		assert_eq!(result.pending_approvals[0].checkpoint_node, id2);
+		assert!(result.pending_approvals[0].approved_by.is_none());
 	}
 	
 
@@ -839,6 +966,7 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![missing_id],
+					trust_tier: None,
 				},
 			],
 		};
@@ -871,11 +999,13 @@ mod tests {
 					id: duplicate_id,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: duplicate_id,
 					effect: Effect::None,
 					dependencies: vec![],
+					trust_tier: None,
 				},
 			],
 		};
@@ -910,11 +1040,13 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![missing_id],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id2,
 					effect: Effect::None,
 					dependencies: vec![id1],
+					trust_tier: None,
 				},
 			],
 		};
@@ -951,11 +1083,13 @@ mod tests {
 					id: id1,
 					effect: Effect::None,
 					dependencies: vec![id2],
+					trust_tier: None,
 				},
 				AdrNodeMeta {
 					id: id2,
 					effect: Effect::None,
 					dependencies: vec![id1],
+					trust_tier: None,
 				},
 			],
 		};

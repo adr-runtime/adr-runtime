@@ -23,7 +23,7 @@ pub mod policy_engine;
 pub use policy::CompiledPolicy;
 pub use resolver::{AdrGraph, IntentResolver, RuleBasedResolver, RuntimeContext, RuntimeStateSnapshot};
 pub use types::{
-    Capability, ExecutionDecision, ExecutionPlan, ExecClass, IntentNode,
+    ApprovalContext, Capability, ExecutionDecision, ExecutionPlan, ExecClass, IntentNode,
     NodeId, NodeType, RejectedPlan, RejectionReason, ResolverResult,
     SafetyRule, SafetyViolation, Severity, Thresholds, TrustTier,
     should_execute,
