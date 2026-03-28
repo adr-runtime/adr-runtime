@@ -1,7 +1,7 @@
 # ADR 0006: Approval Lifecycle Model
 
 ## Status
-Proposed (Phase 21)
+Accepted (Phase 21)
 
 ## Context
 
@@ -54,10 +54,13 @@ Short term:
 - Layer 2 can continue producing checkpoint and approval metadata
 - Layer 1 should not yet add pause/resume semantics
 - Phase 21 can introduce an approval input contract for execution
+- Phase 21 introduces `execute_plan(plan, graph, approvals: &[ApprovalContext])`
+- the runtime validates approvals synchronously before each checkpoint node
 
 Planned follow-up questions:
 
 - what exact identity format `approved_by` should use
+- who is allowed to approve, and how that identity is verified
 - how approval rejection is represented
 - how approval expiry or timeout is represented
 - whether executor input should accept all approvals or only checkpoint-relevant approvals
@@ -89,3 +92,4 @@ Rejected because:
 
 - it introduces a runtime branch without telling the caller how to proceed
 - `should_execute()` already provides the correct pre-execution human-review signal
+- no additional runtime preflight is needed before the approval lifecycle contract exists
