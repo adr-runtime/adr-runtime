@@ -19,6 +19,7 @@ pub enum Effect {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphHeader {
     pub graph_version: String,
+    /// Reserved for future deterministic-mode enforcement.
     pub deterministic_mode: bool,
 }
 

@@ -205,6 +205,9 @@ pub enum SafetyRule {
     TrustTierInsufficient,
     RealtimeSafeBlockingForbidden,
     CapabilityOutOfScope,
+    DuplicateNodeId(NodeId),
+    DependencyNotSatisfied(NodeId),
+    CycleDetected(NodeId),
     PolicyConstraintViolated(String),
     CheckpointBypassed,
     /// Critical: the kill switch path must always be reachable
