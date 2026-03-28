@@ -181,12 +181,7 @@ pub struct RejectedPlan {
     pub reason: RejectionReason,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ApprovalContext {
-    pub checkpoint_node: NodeId,
-    pub approved_by:     Option<String>,
-    pub approved_at:     Option<String>,
-}
+pub type ApprovalContext = adr_core::ApprovalContext;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

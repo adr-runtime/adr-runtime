@@ -1,3 +1,4 @@
+use crate::approval::ApprovalContext;
 use crate::capability::CapabilitySet;
 use crate::graph::{Effect, ExecClass, Graph, Node};
 use crate::killswitch::{KillSwitchChannel, StopSignal};
@@ -9,6 +10,8 @@ pub enum AdrRuntimeError {
     RealtimeViolation,
     CapabilityNotGranted(u64),
     PlanNodeMissing(crate::graph::NodeId),
+    MissingApproval(crate::graph::NodeId),
+    ApprovalPending(crate::graph::NodeId),
 }
 
 
@@ -91,6 +94,7 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
 		&mut self,
 		plan: &crate::graph::ExecutionPlan,
 		graph: &Graph,
+		approvals: &[ApprovalContext],
 	) -> Result<Vec<crate::graph::NodeId>, AdrRuntimeError> {
 		let mut executed = Vec::new();
 
@@ -106,6 +110,16 @@ impl<C: KillSwitchChannel> AdrRuntime<C> {
 			let Some(node) = graph.nodes.iter().find(|n| &n.id == node_id) else {
 				return Err(AdrRuntimeError::PlanNodeMissing(*node_id));
 			};
+
+			if plan.checkpoints.contains(node_id) {
+				let Some(approval) = approvals.iter().find(|approval| approval.checkpoint_node == *node_id) else {
+					return Err(AdrRuntimeError::MissingApproval(*node_id));
+				};
+
+				if approval.approved_by.is_none() || approval.approved_at.is_none() {
+					return Err(AdrRuntimeError::ApprovalPending(*node_id));
+				}
+			}
 
 			self.execute_node(node)?;
 			executed.push(*node_id);

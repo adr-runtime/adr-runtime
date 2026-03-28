@@ -8,6 +8,7 @@ pub mod runtime;
 pub mod audit;
 pub mod capability_ids;
 pub mod effect_handler;
+pub mod approval;
 
 
 pub use runtime::{AdrRuntime, AdrRuntimeError};
@@ -23,3 +24,4 @@ pub use capability_ids::{
     CAP_NET_EXTERNAL,
 };
 pub use effect_handler::EffectHandler;
+pub use approval::ApprovalContext;
