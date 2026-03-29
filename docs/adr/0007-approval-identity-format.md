@@ -1,7 +1,7 @@
 # ADR 0007: Approval Identity Format
 
 ## Status
-Proposed (Phase 23)
+Accepted (Phase 23)
 
 ## Context
 
@@ -34,6 +34,12 @@ pub struct ApprovalIdentity {
 }
 ```
 
+Recommended `kind` values (non-exhaustive convention):
+
+- `"operator"` - human operator by name or email
+- `"system"` - automated system actor
+- `"external_service"` - third-party approval gateway
+
 Examples:
 
 - `{ kind: "operator", value: "alice@example.com" }`
@@ -57,6 +63,10 @@ Advantages:
 - machine-readable identity structure
 - explicit distinction between actor class and actor identifier
 - future-compatible with stronger identity semantics
+
+The `{ kind, value }` shape is also forward-compatible with later extensions,
+for example adding optional signature material without redesigning the identity
+container itself.
 
 Why not cryptographic claims now:
 
