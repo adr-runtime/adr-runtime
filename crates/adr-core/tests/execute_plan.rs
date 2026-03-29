@@ -1,5 +1,5 @@
 use adr_core::{
-    AdrRuntime, ApprovalContext, Effect, ExecClass, ExecutionPlan, Graph, GraphHeader, Node,
+    AdrRuntime, ApprovalContext, ApprovalIdentity, Effect, ExecClass, ExecutionPlan, Graph, GraphHeader, Node,
 };
 use adr_core::killswitch::{KillSwitchChannel, StopSignal};
 use uuid::Uuid;
@@ -225,7 +225,10 @@ fn execute_plan_allows_checkpoint_with_completed_approval() {
 
     let approvals = vec![ApprovalContext {
         checkpoint_node: id1,
-        approved_by: Some("operator".to_string()),
+        approved_by: Some(ApprovalIdentity {
+            kind: "operator".to_string(),
+            value: "operator@example.com".to_string(),
+        }),
         approved_at: Some("2026-03-28T22:30:00Z".to_string()),
     }];
 

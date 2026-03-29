@@ -24,4 +24,4 @@ pub use capability_ids::{
     CAP_NET_EXTERNAL,
 };
 pub use effect_handler::EffectHandler;
-pub use approval::ApprovalContext;
+pub use approval::{ApprovalContext, ApprovalIdentity};

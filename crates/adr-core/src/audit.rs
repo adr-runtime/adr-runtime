@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use crate::graph::NodeId;
 use sha2::{Digest, Sha256};
+use crate::approval::ApprovalIdentity;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ActionKind {
@@ -15,7 +16,7 @@ pub struct Evidence {
     pub graph_version: String,
     pub policy_version: String,
     pub contract_hash: String,
-    pub approved_by: Option<String>,
+    pub approved_by: Option<ApprovalIdentity>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -43,7 +44,10 @@ impl ActionLogEntry {
         hasher.update(self.evidence.policy_version.as_bytes());
         hasher.update(self.evidence.contract_hash.as_bytes());
         match &self.evidence.approved_by {
-            Some(approved_by) => hasher.update(approved_by.as_bytes()),
+            Some(approved_by) => {
+                hasher.update(approved_by.kind.as_bytes());
+                hasher.update(approved_by.value.as_bytes());
+            }
             None => hasher.update(b"NO_APPROVAL"),
         }
 

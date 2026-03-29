@@ -1,4 +1,4 @@
-use adr_core::{ActionKind, ActionLogEntry, Evidence, NodeId};
+use adr_core::{ActionKind, ActionLogEntry, ApprovalIdentity, Evidence, NodeId};
 use uuid::Uuid;
 
 #[test]
@@ -37,4 +37,49 @@ fn linear_hash_chain_changes_with_prev_hash() {
 
     assert_ne!(first.entry_hash, second.entry_hash);
     assert_eq!(second.prev_hash, Some(first.entry_hash.clone()));
+}
+
+#[test]
+fn approval_identity_kind_changes_hash() {
+    let node_id = Uuid::new_v4() as NodeId;
+
+    let operator_entry = ActionLogEntry {
+        node_id,
+        kind: ActionKind::Execute,
+        timestamp_utc: "2026-03-03T10:00:00Z".to_string(),
+        success: true,
+        evidence: Evidence {
+            graph_version: "0.1".to_string(),
+            policy_version: "policy-1".to_string(),
+            contract_hash: "contract-1".to_string(),
+            approved_by: Some(ApprovalIdentity {
+                kind: "operator".to_string(),
+                value: "alice".to_string(),
+            }),
+        },
+        prev_hash: None,
+        entry_hash: String::new(),
+    }
+    .with_computed_hash();
+
+    let system_entry = ActionLogEntry {
+        node_id,
+        kind: ActionKind::Execute,
+        timestamp_utc: "2026-03-03T10:00:00Z".to_string(),
+        success: true,
+        evidence: Evidence {
+            graph_version: "0.1".to_string(),
+            policy_version: "policy-1".to_string(),
+            contract_hash: "contract-1".to_string(),
+            approved_by: Some(ApprovalIdentity {
+                kind: "system".to_string(),
+                value: "alice".to_string(),
+            }),
+        },
+        prev_hash: None,
+        entry_hash: String::new(),
+    }
+    .with_computed_hash();
+
+    assert_ne!(operator_entry.entry_hash, system_entry.entry_hash);
 }

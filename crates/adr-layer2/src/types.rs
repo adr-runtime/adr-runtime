@@ -182,6 +182,7 @@ pub struct RejectedPlan {
 }
 
 pub type ApprovalContext = adr_core::ApprovalContext;
+pub type ApprovalIdentity = adr_core::ApprovalIdentity;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
